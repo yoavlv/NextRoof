@@ -9,32 +9,45 @@ Save your favorite properties for later
 Contact the property owner or agent directly from the app
 Stay up-to-date with the latest real estate trends in Tel Aviv
 
-The project is based on information from several sources:
+The project is based on data from several sources:
 
-www.govmap.gov.il - a government website that gives access to all real estate transactions from 1998 to the present in Shiral and in particular in Tel Aviv
+www.govmap.gov.il - a government website that gives access to all real-estate transactions from 1998 to the present in Israel.
 
-www.nadlan.gov.il - another government site that provides information on real estate transactions in Israel and in Tel Aviv in particular - the information on this site is intended to complete missing information from the govmap site and collect additional providers that are not shown on the govmap site.
+www.nadlan.gov.il - another government site that provides information on real-estate transactions in Israel - the data from this website is intended to complete missing information from the govmap site and collect additional providers that are not shown on the govmap website.
 
-www.yad2.co.il - an Israeli site where private individuals, ranges, and real estate companies advertise their apartments for sale.
+www.yad2.co.il - an Israeli website where private individuals, brokers, and real-estate companies advertise their apartments for sale.
 
 The project was built in several stages:
-1. Collecting the information from the three sites in full - the information is collected through crawling and using an external API.
+1. Collecting the data from the three website above - the data is collected through crawling and using an external API.
 We divided the collected information into 3 tables: nadlan, govmap and yad2.
 
-2. Clearing the information -
-govmap, nadlan - we cleaned information irrelevant to our project such as real estate transactions of: parking lots, shops, land, etc...
-and information that is not reliable in terms of the transaction price and the size of the property.
-yad2 - We cleaned information that did not include price, unreliable price, and transactions of companies (we left only transactions of private individuals and brokers).
+2. Clean the data -
+govmap, nadlan - we cleaned irrelevant data to our project such as real estate transactions of: parking lots, shops, land, etc...
+and data that is not reliable in terms of the transaction price and the size of the property.
+yad2 - We cleaned data that did not include price, unreliable price, and transactions of companies (we left only transactions of private individuals and brokers).
 
-3. Consolidation of the information - after cleaning the information, we unified the information of govmap and nadlan so that we received more data on each transaction.
+3. Union of the data - after cleaning the information, we unified the data from govmap and nadlan so that we received more data on each transaction.
 
-4. Researching the information - we used information visualization to research the information, learn about it and its reliability and quality.
+4. Researching the data - we used data visualization to research the data, learn about it and its reliability and quality.
 
-5. After investigating various algorithms we came to the decision to use the RandomForestRegressor model which brought us reliable results.
-After studying the model and checking it on the consolidated information of govmap and nadlan (past transactions)
+5.Machine learning - After researching various algorithms we came to the decision to use the RandomForestRegressor model which brought us reliable results.
 
-6. Running the existing model on new transactions in the market in order to try and locate the most profitable transactions in the market today.
+6. Running the existing model on new transactions in the market (yad2) in order to try and locate the most profitable transactions in the market today.
 
+
+
+Points to improve the model:
+1. The model has difficulty predicting sufficiently precisely the value of transactions in the market due to 2 reasons that we arrived at:
+  A. The model is learned on very old transactions and therefore a large fallout can
+  Our solution: running our model on the most recent transactions
+
+    B. Apparently the data on the real estate transactions takes time to be updated on the goverments websites, therefore there are no transactions of the last months,   there is an upward trend that the model does not recognize.
+  Our solution: checking the percentage increase of the real estate in the last year and adding this percentage in the model view
+  
+  C.There is a difference of several percent between the advertising price and the closing price of the deal.
+    Our solution: checking the difference and entering it manually in the model.
+    
+ 
 
 Requirements
 To run this project, you will need:
