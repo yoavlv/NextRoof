@@ -1,52 +1,39 @@
 # RealEstateTLV
 
-Welcome to the Real Estate TLV project! This project is designed to help people find real estate properties in Tel Aviv, Israel. Whether you're looking for a place to live or you're an investor searching for the next big thing, this project has something for everyone.
+Welcome to the Real Estate TLV project! Our aim is to provide a comprehensive platform for finding real estate properties in Tel Aviv, Israel. Whether you're a potential homeowner or an investor, this project offers something for everyone.
 
-Features
-Search for properties by location, price, size, and more
-Get detailed information about each property, including photos and descriptions
+Key Features
+Search for properties using various filters like location, price, size, and more
+View detailed information about each property including photos, descriptions, and more
 Save your favorite properties for later
-Contact the property owner or agent directly from the app
-Stay up-to-date with the latest real estate trends in Tel Aviv
+Directly contact the property owner or agent from within the app
+Stay updated with the latest real estate trends in Tel Aviv
+Data Sources
+This project is based on data from the following sources:
 
-The project is based on data from several sources:
+www.govmap.gov.il - a government website that provides access to real-estate transactions in Israel dating back to 1998.
+www.nadlan.gov.il - a government site that offers additional information on real-estate transactions in Israel.
+www.yad2.co.il - a popular Israeli website where individuals, brokers, and real-estate companies advertise their properties for sale.
+Project Development
+The project was developed in several stages:
 
-www.govmap.gov.il - a government website that gives access to all real-estate transactions from 1998 to the present in Israel.
+Data collection - The data was collected from the three sources mentioned above through crawling and using an external API. The information was divided into three tables: nadlan, govmap, and yad2.
+Data cleaning - Irrelevant data was removed from the govmap and nadlan tables, such as parking lots, shops, land, etc. The yad2 table was cleaned of transactions without prices, unreliable prices, and transactions from companies.
+Data unification - The data from govmap and nadlan was unified to provide more information on each transaction.
+Data analysis - Data visualization was used to research and analyze the data, assess its reliability and quality.
+Machine learning - The RandomForestRegressor model was used to produce reliable results.
+Model testing - The existing model was run on new transactions in the market (yad2) to identify the most profitable transactions.
+Room for Improvement
+The current model has some limitations and room for improvement, including:
 
-www.nadlan.gov.il - another government site that provides information on real-estate transactions in Israel - the data from this website is intended to complete missing information from the govmap site and collect additional providers that are not shown on the govmap website.
-
-www.yad2.co.il - an Israeli website where private individuals, brokers, and real-estate companies advertise their apartments for sale.
-
-The project was built in several stages:
-1. Collecting the data from the three website above - the data is collected through crawling and using an external API.
-We divided the collected information into 3 tables: nadlan, govmap and yad2.
-
-2. Clean the data -
-govmap, nadlan - we cleaned irrelevant data to our project such as real estate transactions of: parking lots, shops, land, etc...
-and data that is not reliable in terms of the transaction price and the size of the property.
-yad2 - We cleaned data that did not include price, unreliable price, and transactions of companies (we left only transactions of private individuals and brokers).
-
-3. Union of the data - after cleaning the information, we unified the data from govmap and nadlan so that we received more data on each transaction.
-
-4. Researching the data - we used data visualization to research the data, learn about it and its reliability and quality.
-
-5.Machine learning - After researching various algorithms we came to the decision to use the RandomForestRegressor model which brought us reliable results.
-
-6. Running the existing model on new transactions in the market (yad2) in order to try and locate the most profitable transactions in the market today.
-
-
-
-Points to improve the model:
-1. The model has difficulty predicting sufficiently precisely the value of transactions in the market due to 2 reasons that we arrived at:
-  A. The model is learned on very old transactions and therefore a large fallout can
-  Our solution: running our model on the most recent transactions
-
-    B. Apparently the data on the real estate transactions takes time to be updated on the goverments websites, therefore there are no transactions of the last months,   there is an upward trend that the model does not recognize.
-  Our solution: checking the percentage increase of the real estate in the last year and adding this percentage in the model view
-  
-  C.There is a difference of several percent between the advertising price and the closing price of the deal.
-    Our solution: checking the difference and entering it manually in the model.
-    
+Inaccurate prediction of transaction values - This is due to:
+A. The model being learned on outdated transactions, leading to a large discrepancy in results.
+Solution: Running the model on the most recent transactions.
+B. The data on real estate transactions taking time to be updated on government websites.
+Solution: Checking the percentage increase of real estate in the last year and incorporating it into the model's view.
+C. The difference between the advertised price and the closing price of the deal.
+Solution: Checking the difference and entering it manually in the model.
+Overall, the Real Estate TLV project provides a comprehensive platform for finding and analyzing real estate properties in Tel Aviv, Israel. We are continuously working to improve the accuracy and reliability of our results.
  
 
 Requirements
