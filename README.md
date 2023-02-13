@@ -23,16 +23,24 @@ The project was developed in several stages:
 **5. Machine learning** - The RandomForestRegressor model was used to produce reliable results.
 
 **6. Model testing** - The existing model was run on new transactions in the market (yad2) to identify the most profitable transactions.
-Room for Improvement
-The current model has some limitations and room for improvement, including:
+
+
+**Room for Improvement
+**The current model has some limitations and room for improvement, including:
 
 Inaccurate prediction of transaction values - This is due to:
 A. The model being learned on outdated transactions, leading to a large discrepancy in results.
+
 Solution: Running the model on the most recent transactions.
+
 B. The data on real estate transactions taking time to be updated on government websites.
+
 Solution: Checking the percentage increase of real estate in the last year and incorporating it into the model's view.
+
 C. The difference between the advertised price and the closing price of the deal.
+
 Solution: Checking the difference and entering it manually in the model.
+
 Overall, the Real Estate TLV project provides a comprehensive platform for finding and analyzing real estate properties in Tel Aviv, Israel. We are continuously working to improve the accuracy and reliability of our results.
  
 
