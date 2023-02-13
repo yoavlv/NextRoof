@@ -3,6 +3,9 @@
 Welcome to the Real Estate TLV project! Our aim is to provide a comprehensive platform for finding real estate properties in Tel Aviv, Israel. Whether you're a potential homeowner or an investor, this project offers something for everyone.
 
 
+ ![PPM!](img/PricePerMeterTLV.png)
+ 
+ 
 www.govmap.gov.il - a government website that provides access to real-estate transactions in Israel dating back to 1998.
 
 www.nadlan.gov.il - a government site that offers additional information on real-estate transactions in Israel.
@@ -43,8 +46,15 @@ Solution: Checking the difference and entering it manually in the model.
 
 Overall, the Real Estate TLV project provides a comprehensive platform for finding and analyzing real estate properties in Tel Aviv, Israel. We are continuously working to improve the accuracy and reliability of our results.
  
- 
+![heatmap!](img/heatmaptlv.png)
+
+
+
  ![DealFr!](img/DealFr.png)
+
+
+
+ ![n_prices!](img/n_prices.png)
 
 **Requirements**
 To run this project, you will need:
