@@ -10,6 +10,7 @@ Contact the property owner or agent directly from the app
 Stay up-to-date with the latest real estate trends in Tel Aviv
 
 The project is based on information from several sources:
+
 www.govmap.gov.il - a government website that gives access to all real estate transactions from 1998 to the present in Shiral and in particular in Tel Aviv
 
 www.nadlan.gov.il - another government site that provides information on real estate transactions in Israel and in Tel Aviv in particular - the information on this site is intended to complete missing information from the govmap site and collect additional providers that are not shown on the govmap site.
