@@ -43,6 +43,8 @@ Solution: Checking the difference and entering it manually in the model.
 
 Overall, the Real Estate TLV project provides a comprehensive platform for finding and analyzing real estate properties in Tel Aviv, Israel. We are continuously working to improve the accuracy and reliability of our results.
  
+ 
+ ![DealFr!](img/DealFr.png)
 
 **Requirements**
 To run this project, you will need:
@@ -53,6 +55,7 @@ Pandas, Numpy, Matplotlib, and Seaborn libraries
 **Installation**
 The Real Estate TLV project is a web-based application and can be accessed directly from your browser. No downloads or installations are required.
 
+img/DealFr.png
 
 Contribution
 We welcome contributions to the Real Estate TLV project! If you have an idea for a new feature, or if you've found a bug that needs to be fixed, please open a new issue in the GitHub repository. We appreciate your help
