@@ -4,8 +4,11 @@ Welcome to the Real Estate TLV project! Our aim is to provide a comprehensive pl
 
 
 www.govmap.gov.il - a government website that provides access to real-estate transactions in Israel dating back to 1998.
+
 www.nadlan.gov.il - a government site that offers additional information on real-estate transactions in Israel.
+
 www.yad2.co.il - a popular Israeli website where individuals, brokers, and real-estate companies advertise their properties for sale.
+
 Project Development
 The project was developed in several stages:
 
