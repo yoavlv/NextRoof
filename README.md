@@ -28,8 +28,8 @@ The project was developed in several stages:
 **6. Model testing** - The existing model was run on new transactions in the market (yad2) to identify the most profitable transactions.
 
 
-**Room for Improvement
-**The current model has some limitations and room for improvement, including:
+**Place for Improvement**
+**The current model has some limitations and places for improvement, including:
 
 Inaccurate prediction of transaction values - This is due to:
 A. The model being learned on outdated transactions, leading to a large discrepancy in results.
