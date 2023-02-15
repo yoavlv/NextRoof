@@ -29,7 +29,8 @@ The project was developed in several stages:
 
 
 **Place for Improvement**
-**The current model has some limitations and places for improvement, including:
+
+**The current model has some limitations and places for improvement, including:**
 
 Inaccurate prediction of transaction values - This is due to:
 A. The model being learned on outdated transactions, leading to a large discrepancy in results.
