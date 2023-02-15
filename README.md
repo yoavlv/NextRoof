@@ -56,7 +56,7 @@ Overall, the Real Estate TLV project provides a comprehensive platform for findi
 
 ![n_prices!](img/n_prices.png)
 
-![Yad2 - difference.png!](img/Yad2 - difference.png.png)
+![Yad2 - difference.png!](img/Yad2 - difference.png)
 
 **Requirements**
 To run this project, you will need:
