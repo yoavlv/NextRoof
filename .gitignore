@@ -1,0 +1,6 @@
+# Ignore all .txt files
+*.txt
+*.csv
+
+# Ignore the file with the name "yad2_scraper.ipynb"
+yad2_scraper.ipynb
