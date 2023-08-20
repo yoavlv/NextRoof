@@ -2,6 +2,10 @@
 *.txt
 *.csv
 *.json
+*.pkl
+Algorithms/*.pkl
+Data/*.csv
+
 # Ignore the file with the name "yad2_scraper.ipynb"
 yad2_scraper.ipynb
 Data/linear_regression_tuning.ipynb
