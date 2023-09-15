@@ -1,11 +1,1 @@
-*.txt
-*.csv
-*.json
-*.pkl
-Algorithms/*.pkl
-Data/*.csv
-/Scraping
-# Ignore the file with the name "yad2_scraper.ipynb"
-Yad2_scraper.ipynb
-Data/linear_regression_tuning.ipynb
-/chromedriver_win32
+
