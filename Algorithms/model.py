@@ -12,9 +12,10 @@ from xgboost import XGBRegressor
 import pandas as pd
 import csv
 import joblib
-from model_data import params , best_params , models_list , lean_params
-from setUp import data_prep
-from model_plots import result_plot , plot_model_scores
+from Algorithms.model_data import params, best_params, models_list, lean_params
+from Algorithms.setUp import data_prep
+from Algorithms.model_plots import result_plot , plot_model_scores
+from monitor import monitor_data
 
 def get_models_with_best_params(best_params):
     models = dict()
@@ -71,20 +72,29 @@ def evaluate_model(model, X_train_scaled, X_test_scaled, y_train, y_test):
         'y_pred': y_pred,
         'model': model_train
     }
+def init_model():
+    try:
+        X_train_scaled,  X_test_scaled  ,y_train, y_test , X_train, X_test = data_prep(start_year = 2003 , min_price = 1200000 ,max_price =7000000 )
+        # best_params = find_best_params(models_list , X_train_scaled ,y_train )
+        models = get_models_with_best_params(lean_params) # best_params  / lean_params
 
-X_train_scaled,  X_test_scaled  ,y_train, y_test , X_train, X_test = data_prep(start_year = 2003 , min_price = 1200000 ,max_price =7000000 )
-# best_params = find_best_params(models_list , X_train_scaled ,y_train )
-models = get_models_with_best_params(lean_params) # best_params  / lean_params
+        # evaluate the models and store results
+        scores = {}
+        saved_models = {}
+        for name, model in models.items():
+            score = evaluate_model(model, X_train_scaled, X_test_scaled, y_train, y_test)
+            scores[name] = score
+            saved_models[name] = model
 
-# evaluate the models and store results
-scores = {}
-saved_models = {}
-for name, model in models.items():
-    score = evaluate_model(model, X_train_scaled, X_test_scaled, y_train, y_test)
-    scores[name] = score
-    saved_models[name] = model
+        joblib.dump(saved_models, 'saved_models.pkl')
 
-joblib.dump(saved_models, 'saved_models.pkl')
+        plot_model_scores(scores)
+        result_plot(scores)
 
-plot_model_scores(scores)
-result_plot(scores)
+        monitor_data['Clean']['nadlan']['r2'] = scores['stacking']['r2_score']
+        monitor_data['Clean']['nadlan']['mae'] = scores['stacking']['mae_score']
+        monitor_data['Clean']['nadlan']['status'] = 'Success'
+
+    except Exception as e:
+        monitor_data['Clean']['nadlan']['error'] = e
+        monitor_data['Clean']['nadlan']['status'] = 'Fail'

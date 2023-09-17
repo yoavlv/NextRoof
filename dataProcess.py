@@ -9,7 +9,7 @@ import re
 import csv
 
 class CleanData():
-    def __init__(self, df , name='NoName'):
+    def __init__(self, df , name='NoName' , test = False):
         self.df = df
         self.name = name
         self.shape = df.shape
@@ -17,10 +17,11 @@ class CleanData():
         if self.name == 'madlan':
             self.madlanSetUp()
 
-        elif self.name == 'yad2':
+        elif self.name == 'yad2' :
             self.yad2SetUp()
 
-        self.mainSetUp()
+        if test == False:
+            self.mainSetUp()
 
     def __str__(self):
         return f'name:{self.name} {self.df.shape}'
@@ -33,9 +34,11 @@ class CleanData():
         print(f"df saved {path}")
 
     def setUp_cols(self):
-        self.df.loc[:, 'Gush'] = np.nan
-        self.df.loc[:, 'Helka'] = np.nan
-        self.df.loc[:, 'Tat'] = np.nan
+        cols = ['Gush', 'Helka','Tat']
+        for col in cols:
+            if col not in list(self.df.columns):
+                self.df.loc[:, col] = np.nan
+
 
     def madlanSetUp(self):
         self.df = self.df.rename(columns={'BuildingClass': 'Asset_type'})
@@ -117,6 +120,7 @@ class CleanData():
     def parcel_rank(self):
         count = 0
         self.df['Helka_rank'] = np.nan
+
         self.df = self.df.dropna(subset=['Gush', 'Helka']).reset_index(drop=True)
         self.df['Gush'] = self.df['Gush'].astype(np.int32)
         self.df['Helka'] = self.df['Helka'].astype(np.int32)
@@ -140,7 +144,7 @@ class CleanData():
             if match.empty:
                 count += 1
 
-        self.df['Helka_rank'] = self.df['Helka_rank'].fillna(self.df['Helka_rank'].mean()).astype(np.int32)
+        self.df['Helka_rank'] = self.df['Helka_rank'].fillna(df_nadlan['Helka_rank'].mean()).astype(np.int32)
 
     def street_and_neighborhood_rank(self, column):
         self.df = update_neighborhood_street_token(self.df)
@@ -316,8 +320,8 @@ class CleanData():
 
     def add_gush_helka_tat(self, city='תל אביב'):
 
-        df1_gov = pd.read_csv("Data/Real_Estate_TLV_GOVMAPS_1.csv", index_col=0)
-        df2_gov = pd.read_csv("Data/Real_Estate_TLV_GOVMAPS_2.csv", index_col=0)
+        df1_gov = pd.read_csv("C:/Users/yoavl/NextRoof/Data/Real_Estate_TLV_GOVMAPS_1.csv", index_col=0)
+        df2_gov = pd.read_csv("C:/Users/yoavl/NextRoof/Data/Real_Estate_TLV_GOVMAPS_2.csv", index_col=0)
         df_gov = pd.merge(df1_gov, df2_gov, how='outer')
         df_gov[['Gush', 'Helka', 'Tat']] = df_gov['GUSHHELKATAT'].str.split('-|/', n=2, expand=True).astype(np.int32)
         df_gov['Home_number'] = df_gov['ADDRESS'].str.extract('(\d+)').astype(np.int32)
@@ -339,7 +343,7 @@ class CleanData():
                     self.df.loc[index, 'Tat'] = matches['Tat'].values[0]
 
         # Level 2: Nadlan Database
-        df_nadlan = pd.read_csv("Data/Nadlan.csv")
+        df_nadlan = pd.read_csv("C:/Users/yoavl/NextRoof/Data/Nadlan.csv")
         df_nadlan[['Gush', 'Helka', 'Tat']] = df_nadlan['GUSH'].str.split('-|/', n=2, expand=True).astype(np.int32)
         df_nadlan = df_nadlan.drop(columns='GUSH', axis=1)
         df_nadlan[['Street', 'Home_number']] = df_nadlan['DISPLAYADRESS'].str.extract('(.+)\s+(\d+)')
@@ -362,7 +366,7 @@ class CleanData():
                     self.df.loc[index, 'Tat'] = matches['Tat'].values[0]
 
         # Level 3: Addresses
-        df_address = pd.read_csv("Data/Addresses.csv")
+        df_address = pd.read_csv("C:/Users/yoavl/NextRoof/Data/Addresses.csv")
         for index, row in self.df.iterrows():
             if pd.notna(row['Home_number']):
                 home_number = row['Home_number']

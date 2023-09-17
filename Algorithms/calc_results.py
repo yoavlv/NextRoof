@@ -3,6 +3,8 @@ import pandas as pd
 import joblib
 from sklearn.metrics import r2_score, mean_absolute_error
 from setUp import data_prep
+from monitor import monitor_data
+
 def final_data(df, algo_data):
     """
     Merge input dataframe with algo_data based on 'Item_id', remove duplicates, and sort by 'Difference'.
@@ -43,8 +45,12 @@ def predict_data(df, model, item_id):
     print(f'r2_score: {r2} , mae: {mae}')
 
     df['Item_id'] = item_id
-
-    return df.sort_values(by="Difference")
+    data = {
+        'df': df.sort_values(by="Difference"),
+        'r2':r2,
+        'mae':mae,
+    }
+    return data
 
 def save_data(df, path):
     """
@@ -59,13 +65,22 @@ def save_data(df, path):
         print(f"Error saving data: {e}")
 
 
-if __name__ == "__main__":
+def calc_results(yad2 = False, madlan =False):
+    name = 'yad2'
+    if madlan == True:
+        name = 'madlan'
+
     try:
         models = joblib.load('saved_models.pkl')
         model = models['stacking']
+        yad2_df, item_id = data_prep(yad2=yad2 ,madlan=madlan, accuracy=0, min_price=1200000, max_price=6000000)
+        data = predict_data(yad2_df, model, item_id)
+        save_data(data['df'], f"C:/Users/yoavl/NextRoof/Data/{name}_predict")
+        monitor_data['algo'][name]['r2'] = data['r2']
+        monitor_data['algo'][name]['mae'] = data['mae']
+        monitor_data['algo'][name]['status'] = 'Success'
+        print(monitor_data)
     except Exception as e:
-        print(f"Error loading model: {e}")
-        exit()
+        monitor_data['algo'][name]['error'] = e
+        monitor_data['algo'][name]['status'] = 'Fail'
 
-    yad2_df, item_id = data_prep(yad2=True, accuracy=0, min_price=1200000, max_price=6000000)
-    yad_2_results = predict_data(yad2_df, model, item_id)
