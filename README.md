@@ -1,11 +1,12 @@
-# RealEstateTLV
+# NextRoof - Algorithm 
 
-Welcome to the Real Estate TLV project! Our aim is to provide a comprehensive platform for finding real estate properties in Tel Aviv, Israel. Whether you're a potential homeowner or an investor, this project offers something for everyone.
+Welcome to NextRoof - Algorithm ! Our aim is to provide a comprehensive platform for finding real estate properties in Tel Aviv, Israel. Whether you're a potential homeowner or an investor, this project offers something for everyone.
 
 
- ![PPM!](img/PricePerMeterTLV.png)
- 
- 
+ ![plt1!](img/plot_model_scores.png)
+ ![plt2!](img/result_plot.png)
+
+ result_plot
 www.govmap.gov.il - a government website that provides access to real-estate transactions in Israel dating back to 1998.
 
 www.nadlan.gov.il - a government site that offers additional information on real-estate transactions in Israel.
@@ -15,7 +16,7 @@ www.yad2.co.il - a popular Israeli website where individuals, brokers, and real-
 Project Development
 The project was developed in several stages:
 
-**1. Data collection** - The data was collected from the three sources mentioned above through crawling and using an external API. The information was divided into three tables: nadlan, govmap, and yad2.
+**1. Data collection** - The data was collected from the three sources mentioned above through crawling and using an external API. The information was divided into three tables: nadlan, govmap, madlan, and yad2.
 
 **2. Data cleaning** - Irrelevant data was removed from the govmap and nadlan tables, such as parking lots, shops, land, etc. The yad2 table was cleaned of transactions without prices, unreliable prices, and transactions from companies.
 
@@ -25,7 +26,7 @@ The project was developed in several stages:
 
 **5. Machine learning** - The RandomForestRegressor model was used to produce reliable results.
 
-**6. Model testing** - The existing model was run on new transactions in the market (yad2) to identify the most profitable transactions.
+**6. Model testing** - The existing model was run on new transactions in the market (yad2 and madlan) to identify the most profitable transactions.
 
 
 **Place for Improvement**
@@ -61,12 +62,10 @@ Overall, the Real Estate TLV project provides a comprehensive platform for findi
 
 **Requirements**
 To run this project, you will need:
-Python 3.7 or higher
+Python 3.11 or higher
 Jupyter Notebook
 Pandas, Numpy, Matplotlib, and Seaborn libraries
 
-**Installation**
-The Real Estate TLV project is a web-based application and can be accessed directly from your browser. No downloads or installations are required.
 
 img/DealFr.png
 
