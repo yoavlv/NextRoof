@@ -26,5 +26,5 @@ jobs:
 
     - name: Run Tests
       run: |
-        cd NextRoof/Test
+        cd NextRoof/Tests
         python -m unittest discover
