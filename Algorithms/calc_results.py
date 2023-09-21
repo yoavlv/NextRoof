@@ -5,16 +5,43 @@ from sklearn.metrics import r2_score, mean_absolute_error
 from setUp import data_prep
 from monitor import monitor_data
 
-def final_data(df, algo_data):
+
+def final_data(df, algo_data , name=None):
     """
     Merge input dataframe with algo_data based on 'Item_id', remove duplicates, and sort by 'Difference'.
+    Avoid introducing duplicate columns during the merge.
     :param df: Input DataFrame
     :param algo_data: Algorithm DataFrame
     :return: Merged and sorted DataFrame
     """
-    merged_df = pd.merge(df, algo_data, on='Item_id', how='inner')
+    # Identify overlapping columns between df and algo_data excluding 'Item_id'
+    overlapping_cols = [col for col in df.columns if col in algo_data.columns and col != 'Item_id']
+
+
+
+    # Rename overlapping columns in algo_data with a suffix
+    suffix = "_x"
+    algo_data_renamed = algo_data.rename(columns={col: col + suffix for col in overlapping_cols})
+
+    # Merge df with the renamed algo_data
+    merged_df = pd.merge(df, algo_data_renamed, on='Item_id', how='inner')
+    if name == 'yad2':
+        images = pd.read_csv("C:/Users/yoavl/NextRoof/Data/yad_2_data.csv", index_col=0)
+        merged_df = pd.merge(merged_df, images[['Item_id', 'Images']], on='Item_id', how='left')
+
+
+    # Update the index
     merged_df.index += 1
+
+    # Drop duplicates based on 'Item_id'
     merged_df.drop_duplicates(subset='Item_id', inplace=True)
+
+    # Drop the renamed columns if they exist in the merged dataframe
+    for col in overlapping_cols:
+        if col + suffix in merged_df.columns:
+            merged_df.drop(columns=col + suffix, inplace=True)
+
+    # Return the merged dataframe sorted by 'Difference'
     return merged_df.sort_values(by="Difference")
 
 
@@ -67,15 +94,21 @@ def save_data(df, path):
 
 def calc_results(yad2 = False, madlan =False):
     name = 'yad2'
+    raw_data = pd.read_csv("C:/Users/yoavl/NextRoof/Data/yad_2_data_clean.csv", index_col=0)
+
     if madlan == True:
         name = 'madlan'
+        raw_data = pd.read_csv("C:/Users/yoavl/NextRoof/Data/madlan_data_clean.csv" , index_col=0)
 
     try:
         models = joblib.load('saved_models.pkl')
         model = models['stacking']
         yad2_df, item_id = data_prep(yad2=yad2 ,madlan=madlan, accuracy=0, min_price=1200000, max_price=6000000)
         data = predict_data(yad2_df, model, item_id)
-        save_data(data['df'], f"C:/Users/yoavl/NextRoof/Data/{name}_predict")
+
+
+        data['df'] = final_data(raw_data,data['df'] , name)
+        save_data(data['df'], f"C:/Users/yoavl/NextRoof/Data/{name}_predict.csv")
         monitor_data['algo'][name]['r2'] = data['r2']
         monitor_data['algo'][name]['mae'] = data['mae']
         monitor_data['algo'][name]['status'] = 'Success'
@@ -84,3 +117,5 @@ def calc_results(yad2 = False, madlan =False):
         monitor_data['algo'][name]['error'] = e
         monitor_data['algo'][name]['status'] = 'Fail'
 
+calc_results(madlan=True)
+calc_results(yad2=True)

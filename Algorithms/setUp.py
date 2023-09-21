@@ -27,7 +27,7 @@ def data_prep(start_year=2005, end_year=2024, min_price=800000, max_price=100000
     if yad2 == True:
         Activate = True
         # df = pd.read_csv("../Data/Yad2_clean.csv")
-        df = pd.read_csv("C:/Users/yoavl/NextRoof/Data/test2.csv")
+        df = pd.read_csv("C:/Users/yoavl/NextRoof/Data/yad_2_data_clean.csv")
 
         #         df = df[df['Asset_type'] == 'דירה']
         if accuracy:
@@ -36,7 +36,7 @@ def data_prep(start_year=2005, end_year=2024, min_price=800000, max_price=100000
         item_id_col = df['Item_id']
     if madlan == True:
         Activate = True
-        df = pd.read_csv("C:/Users/yoavl/NextRoof/Data/test1.csv")
+        df = pd.read_csv("C:/Users/yoavl/NextRoof/Data/madlan_data_clean.csv")
         # df = pd.read_csv("../Data/madlan_data_clean.csv")
         item_id_col = df['Item_id']
         df.dropna(subset=["Rooms", "Floor", "Size", "Price", "Build_year", "Floors",

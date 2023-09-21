@@ -1,4 +1,3 @@
-*.txt
 *.csv
 *.json
 *.pkl
@@ -8,12 +7,15 @@ Data/*.csv
 /.ipynb_checkpoints
 /__pycache__
 /.idea
+/sql
 # Ignore the file with the name "yad2_scraper.ipynb"
 Yad2_scraper.ipynb
 Data/linear_regression_tuning.ipynb
 /chromedriver_win32
 NLP_Process.ipynb
 Untitled.ipynb
+Untitled1.ipynb
+
 data_cleaning_nadlan.ipynb
 data_cleaning_madlan.ipynb
 data_cleaning_yad2.ipynb

@@ -34,6 +34,7 @@ class CleanData():
         print(f"df saved {path}")
 
     def setUp_cols(self):
+        self.df = self.df[self.df['City'].str.contains('תל אביב')]
         cols = ['Gush', 'Helka','Tat']
         for col in cols:
             if col not in list(self.df.columns):
@@ -45,6 +46,7 @@ class CleanData():
         self.df = self.df.dropna(subset=['Size'])
         self.df = self.df[self.df['Asset_type'].apply(lambda x: x in ['flat', 'gardenapartment', 'roofflat', 'building', 'studio'])]
     def yad2SetUp(self):
+        self.df['Parking'] = self.df['Parking'].replace('ללא', "0").fillna("0").astype(np.int32)
         self.algo_accuracy()
         self.drop_rows_by_keyword()
         try:
