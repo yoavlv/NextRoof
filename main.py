@@ -2,6 +2,7 @@ import datetime
 from dataProcess import CleanData
 import pandas as pd
 import sys
+
 from monitor import monitor_data , find_errors
 sys.path.append('C:/Users/yoavl/NextRoof/Scraping')
 sys.path.append('C:/Users/yoavl/NextRoof/Algorithms')

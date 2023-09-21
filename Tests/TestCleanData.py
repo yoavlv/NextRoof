@@ -1,11 +1,17 @@
+import sys
+import os
+current_directory = os.path.dirname(os.path.abspath(__file__))
+root_directory = os.path.abspath(os.path.join(current_directory, os.pardir))
+sys.path.append(root_directory)
 import unittest
 import pandas as pd
 import numpy as np
 from datetime import datetime
 from dataProcess import CleanData
 from unittest.mock import patch, Mock
-import sys
-sys.path.append('C:/Users/yoavl/NextRoof')
+
+# import sys
+# sys.path.append('C:/Users/yoavl/NextRoof')
 class TestCleanData(unittest.TestCase):
 
     def setUp(self ):
