@@ -5,41 +5,41 @@ import math
 import numpy as np
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
+# from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
-def convert_coordinates(lat_long_list):
-    '''
-    This function use to convert UTM coordinates to ITM coordinates using outside website with selenium
-    '''
-    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
-    driver.get("https://zvikabenhaim.appspot.com/software/ITM/")
-
-    # locate all the input fields and button
-    lat_input = driver.find_element(By.XPATH, '//*[@id="lat"]')
-    lon_input = driver.find_element(By.XPATH, '//*[@id="long"]')
-    convert_button = driver.find_element(By.XPATH, '//form[1]/table/tbody/tr[3]/td/input')
-    east_span = driver.find_element(By.XPATH, '//*[@id="itm_east"]')
-    north_span = driver.find_element(By.XPATH, '//*[@id="itm_north"]')
-    coverted_list = []
-    for cords in lat_long_list:
-        east = cords[0]
-        north = cords[1]
-        if cords[0] != 0.0 and cords[1] != 0.0:
-            lat_input.clear()
-            lon_input.clear()
-
-            lat_input.send_keys(cords[0])
-            lon_input.send_keys(cords[1])
-
-            convert_button.click()
-
-            east = int(east_span.text)
-            north = int(north_span.text)
-
-        coverted_list.append((east, north))
-
-    driver.quit()
-    return coverted_list
+# def convert_coordinates(lat_long_list):
+#     '''
+#     This function use to convert UTM coordinates to ITM coordinates using outside website with selenium
+#     '''
+#     driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
+#     driver.get("https://zvikabenhaim.appspot.com/software/ITM/")
+#
+#     # locate all the input fields and button
+#     lat_input = driver.find_element(By.XPATH, '//*[@id="lat"]')
+#     lon_input = driver.find_element(By.XPATH, '//*[@id="long"]')
+#     convert_button = driver.find_element(By.XPATH, '//form[1]/table/tbody/tr[3]/td/input')
+#     east_span = driver.find_element(By.XPATH, '//*[@id="itm_east"]')
+#     north_span = driver.find_element(By.XPATH, '//*[@id="itm_north"]')
+#     coverted_list = []
+#     for cords in lat_long_list:
+#         east = cords[0]
+#         north = cords[1]
+#         if cords[0] != 0.0 and cords[1] != 0.0:
+#             lat_input.clear()
+#             lon_input.clear()
+#
+#             lat_input.send_keys(cords[0])
+#             lon_input.send_keys(cords[1])
+#
+#             convert_button.click()
+#
+#             east = int(east_span.text)
+#             north = int(north_span.text)
+#
+#         coverted_list.append((east, north))
+#
+#     driver.quit()
+#     return coverted_list
 
 def get_long_lat_tuples(df):
     long_lat_tuples = []

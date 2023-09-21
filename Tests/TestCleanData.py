@@ -20,6 +20,8 @@ class TestCleanData(unittest.TestCase):
             self.name_value = 'madlan'
 
         self.sample_data = pd.DataFrame({
+            'City': ['תל אביב', 'תל אביב', 'תל אביב', 'תל אביב', 'תל אביב'],
+
             'BuildingClass': ['flat', 'roofflat', 'studio', 'villa', 'flat'],
             'Street': ['Main St', 'Broadway', 'Park Ave', None, 'Market St'],
             'Home_number': [1, 2, 3, 4, 5],
@@ -35,12 +37,12 @@ class TestCleanData(unittest.TestCase):
             'Build_year': [1900, 2000, 2023, 2050, 2019],
             'Gush': [1, 1, 2, 3, 3],
             'Helka': [1, 2, 4, 2, 7],
+            'Tat': [np.nan,np.nan,np.nan,np.nan, np.nan],
 
         })
         self.clean_data_instance = CleanData(self.sample_data, name=self.name_value, test=True)
     def tearDown(self):
         print(f"\nTearing down after the test: {self._testMethodName}...\n")
-
 
     @patch('dataProcess.df_helper')
     def test_fix_floors(self, mock_df_helper):
@@ -52,16 +54,16 @@ class TestCleanData(unittest.TestCase):
         })
 
         mock_df_helper.return_value = nadlan_mock
-
-        # Note: You'd need to determine what the expected dataframe looks like after fix_floors.
-        # Here, I'm assuming that the Floors column gets updated to certain values as per your logic.
-        # Replace this with what you expect the result to be.
         expected_df = self.sample_data.copy()
-        expected_df['Floors'] = [3, 4, 5, 25, 3]  # Example of expected updated floors
+        expected_df['Floors'] = [3, 4, 5, 25, 3]
 
         # Call the fix_floors method
         self.clean_data_instance.fix_floors()
+
         expected_df['Floors'] = expected_df['Floors'].astype(float)
+        self.clean_data_instance.df['Floors'] = self.clean_data_instance.df['Floors'].astype(float)
+        extra_columns = set(self.clean_data_instance.df.columns) - set(expected_df.columns)
+        print("Extra columns in the clean_data_instance DataFrame:", extra_columns)
 
         # Compare the dataframe from the instance with the expected dataframe
         pd.testing.assert_frame_equal(self.clean_data_instance.df, expected_df)

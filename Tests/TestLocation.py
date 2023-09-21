@@ -20,10 +20,10 @@ class TestFunctions(unittest.TestCase):
     def test_get_gush_chelka_api(self):
         pass
 
-    def test_convert_coordinates(self):
-        lat_long_list = [(32, 35)]
-        result = convert_coordinates(lat_long_list)
-        self.assertEqual(result, [(200131, 656329)])
+    # def test_convert_coordinates(self):
+    #     lat_long_list = [(32, 35)]
+    #     result = convert_coordinates(lat_long_list)
+    #     self.assertEqual(result, [(200131, 656329)])
 
     def test_get_long_lat_tuples(self):
         sample_data = {

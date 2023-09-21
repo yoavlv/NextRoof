@@ -1,7 +1,7 @@
 import pandas as pd
 from utils.base import  df_helper ,create_building_year_dict , create_street_neighborhood_dict , update_neighborhood_street_token , check_for_match
 # from bs4 import BeautifulSoup
-from utils.location import convert_coordinates , get_long_lat_tuples ,find_avg_cords_by_street
+from utils.location import get_long_lat_tuples ,find_avg_cords_by_street
 import numpy as np
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
