@@ -24,5 +24,5 @@ jobs:
 
     - name: Run Tests
       run: |
-        cd Tests/
-        python -m unittest discover
+        cd Tests
+        python -m unittest discover --pattern "Test*.py"
