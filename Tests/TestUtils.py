@@ -1,8 +1,7 @@
+
 import unittest
 import pandas as pd
 from unittest.mock import patch, Mock
-import sys
-sys.path.append('C:/Users/yoavl/NextRoof/utils')
 from utils.base import *
 
 class TestFunctions(unittest.TestCase):
