@@ -105,8 +105,6 @@ class TestCleanData(unittest.TestCase):
 
     def test_convert_price_str_to_int(self):
         self.clean_data_instance.convert_price_str_to_int()
-        # Check type of Price column
-
         self.assertTrue(np.issubdtype(self.clean_data_instance.df['Price'].dtype, np.integer))
 
     def test_add_year(self):

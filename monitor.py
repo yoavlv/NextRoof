@@ -53,6 +53,24 @@ monitor_data = {
             'error': None,
         },
     },
+    'sql':{
+        'nadlan':{
+            'New_data': None,
+            'status':None,
+            'error':None,
+        },
+        'madlan': {
+            'New_data': None,
+            'status': None,
+            'error': None,
+        },
+        'yad2': {
+            'New_data': None,
+            'status': None,
+            'error': None,
+        }
+
+    }
 
 }
 def find_errors(data, errors, path=""):
@@ -63,5 +81,3 @@ def find_errors(data, errors, path=""):
                 errors[new_path] = value
                 print(f"{new_path} : {value}")
             find_errors(value, errors, new_path)
-
-

@@ -2,6 +2,9 @@
 *.json
 *.pkl
 Algorithms/*.pkl
+Algorithms/catboost_info
+main/catboost_info
+Clean/sql_functions.py
 Data/*.csv
 /Scraping
 /.ipynb_checkpoints
@@ -15,6 +18,7 @@ Data/linear_regression_tuning.ipynb
 NLP_Process.ipynb
 Untitled.ipynb
 Untitled1.ipynb
+Untitled2.ipynb
 
 data_cleaning_nadlan.ipynb
 data_cleaning_madlan.ipynb

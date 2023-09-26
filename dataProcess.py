@@ -59,29 +59,16 @@ class CleanData():
             , 'Date_added', 'City_code', 'City'], axis=1)
         self.convert_price_str_to_int()
     def mainSetUp(self):
-        print('add_gush_helka_tat')
         print(self.df.shape)
         self.add_gush_helka_tat()
-        print('fix_build_year')
-        print(self.df.shape)
         self.fix_build_year()
-        print('fix_floors')
-        print(self.df.shape)
-
         self.fix_floors()
-        print('update_asset_conditon')
         self.update_asset_conditon()
-        print('add_year')
         self.add_year()
-        print('update_neighborhood_street_token')
         self.update_neighborhood_street_token()
-        print('street_and_neighborhood_rank_Neighborhood')
         self.street_and_neighborhood_rank('Neighborhood')
-        print('street_and_neighborhood_rank_Street')
         self.street_and_neighborhood_rank('Street')
-        print('street_and_neighborhood_rank_Gush')
         self.street_and_neighborhood_rank('Gush')
-        print('parcel_rank')
         self.parcel_rank()
 
     def drop_rows_by_keyword(self):
@@ -92,8 +79,6 @@ class CleanData():
         conditions = [ self.df['Text'].str.contains(keyword, case=False) for keyword in keywords]
         drop_mask = pd.concat(conditions, axis=1).any(axis=1)
         self.df =  self.df[~drop_mask]
-
-
 
     def fix_floors(self):
         nadlan = df_helper(['Floors', 'Street', 'Home_number'])
@@ -147,7 +132,7 @@ class CleanData():
                 count += 1
 
         self.df['Helka_rank'] = self.df['Helka_rank'].fillna(df_nadlan['Helka_rank'].mean()).astype(np.int32)
-
+        self.df = self.df.drop(columns = 'Gush_Helka')
     def street_and_neighborhood_rank(self, column):
         self.df = update_neighborhood_street_token(self.df)
         self.df = self.df.dropna(subset=['Neighborhood', 'Street']).reset_index(drop=True)

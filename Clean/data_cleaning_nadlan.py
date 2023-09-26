@@ -1,6 +1,4 @@
 import pandas as pd
-import bs4
-from bs4 import BeautifulSoup
 import csv
 import numpy as np
 from datetime import datetime
@@ -8,6 +6,11 @@ from datetime import timedelta
 import math
 import re
 from monitor import monitor_data
+import os
+import sys
+sys.path.append('C:/Users/yoavl/NextRoof/Clean')
+from sql_functions import table_to_df
+import traceback
 
 def rename_cols_update_data_types(df):
     df.drop(columns=["FULLADRESS", "PROJECTNAME", 'KEYVALUE', 'POLYGON_ID', 'TYPE'], axis=1, inplace=True)
@@ -41,24 +44,28 @@ def rename_cols_update_data_types(df):
 
 
 def fill_missing_addresses(df):
-    df2 = pd.read_csv("C:/Users/yoavl/NextRoof/Data/Addresses.csv")
-
+    df_address = table_to_df('address',['gush','helka','street','home_number'])
+    df_nadlan = table_to_df('nadlan',['gush','helka','street','home_number'])
     df1_gov = pd.read_csv("C:/Users/yoavl/NextRoof/Data/Real_Estate_TLV_GOVMAPS_1.csv", index_col=0)
     df2_gov = pd.read_csv("C:/Users/yoavl/NextRoof/Data/Real_Estate_TLV_GOVMAPS_2.csv", index_col=0)
+
     df_gov = pd.merge(df1_gov, df2_gov, how='outer')
     df_gov[['Gush', 'Helka', 'Tat']] = df_gov['GUSHHELKATAT'].str.split('-|/', n=2, expand=True).astype(np.int32)
 
     df[['Gush', 'Helka', 'Tat']] = df['GUSH'].str.split('-|/', n=2, expand=True).astype(np.int32)
     df = df.drop(columns='GUSH', axis=1)
     missing_addresses = df.loc[df['DISPLAYADRESS'].isna(), ['Gush', 'Helka']]
-    print(missing_addresses.shape[0])
 
     for index, row in missing_addresses.iterrows():
         gush = row['Gush']
         helka = row['Helka']
 
-        match1 = df.loc[(df['Gush'] == gush) & (df['Helka'] == helka), 'DISPLAYADRESS']
-        match2 = df2.loc[(df2['ms_gush'] == gush) & (df2['ms_chelka'] == helka), 't_ktovet_melea']
+        filtered_rows = df_nadlan.loc[(df_nadlan['gush'] == gush) & (df_nadlan['helka'] == helka)]
+        match1 = filtered_rows['street'] + ' ' + filtered_rows['home_number'].astype(str)
+
+        filtered_rows = df_address.loc[(df_address['gush'] == gush) & (df_address['helka'] == helka)]
+        match2 = filtered_rows['street'] + ' ' + filtered_rows['home_number'].astype(str)
+
         match3 = df_gov.loc[(df_gov['Gush'] == gush) & (df_gov['Helka'] == helka), 'ADDRESS']
 
         if not match1.empty:
@@ -75,7 +82,6 @@ def fill_missing_addresses(df):
                                       errors='coerce').astype(np.int32)
     df['Street'] = df['DISPLAYADRESS'].str.replace('\d+', '', regex=True).str.strip()
     df = df.drop(columns='DISPLAYADRESS', axis=1)
-    print(missing_addresses.shape[0])
     return df
 
 
@@ -122,7 +128,6 @@ def check_floor_match(floor_dict, floor):
             else:
                 try:
                     floor_int = int(item)
-                    print(f"int {floor_int}")
                     return floor_int
                 except ValueError:
                     pass
@@ -158,8 +163,6 @@ def floor_to_numeric(df, floors):
     df = df.drop(index=indices_to_remove)
 
 
-    print(count)
-
     df = df.rename(columns={'FLOORNO': 'Floor'})
     # Convert 'Floor' to integers after replacing NaN with np.nan
     df.loc[:, 'Floor'] = pd.to_numeric(df['Floor'], errors='coerce', downcast='integer')
@@ -181,66 +184,39 @@ def edit_addresses(df):
 
     df.rename(columns={'t_rechov': 'Street'}, inplace=True)
     df.rename(columns={'ms_bayit': 'Home_number'}, inplace=True)
-
     return df
 
 
 
-def megre_df(df1, df2):
+def megre_df(df1):
     df1 = df1.dropna(subset=['Home_number', 'Street']).reset_index(drop=True)
-    df2 = df2.dropna(subset=['Home_number', 'Street']).reset_index(drop=True)
+    # df2 = df2.dropna(subset=['Home_number', 'Street']).reset_index(drop=True)
+    df2 = table_to_df('address',['street','home_number','long','lat','gush','helka','uniqueid'])
 
     df1['Gush'] = df1['Gush'].astype(str)
     df1['Helka'] = df1['Helka'].astype(str)
     df1['Home_number'] = df1['Home_number'].astype(str)
 
-    df2['Gush'] = df2['Gush'].astype(str)
-    df2['Helka'] = df2['Helka'].astype(str)
-    df2['Home_number'] = df2['Home_number'].astype(str)
+    df2['gush'] = df2['gush'].astype(str)
+    df2['helka'] = df2['helka'].astype(str)
+    df2['home_number'] = df2['home_number'].astype(str)
 
     df1['m'] = df1['Gush'] + df1['Helka'] + df1['Home_number']
-    df2['m'] = df2['Gush'] + df2['Helka'] + df2['Home_number']
+    df2['m'] = df2['gush'] + df2['helka'] + df2['home_number']
 
-    df2 = df2.drop(columns=['Street', 'Home_number', 'Gush', 'Helka'], axis=1)
+    df2 = df2.drop(columns=['street', 'home_number', 'gush', 'helka'], axis=1)
     df2.drop_duplicates(subset=['m'], inplace=True)
     merged = pd.merge(df1, df2, on=['m'], how='left')
 
-    cols = ['m', 't_ktovet_melea', 't_bayit_veknisa', 'knisa', 'k_status_hesder', 'k_rechov', 'lon', 'lat', 'id_ktovet']
-    merged = merged.drop(columns=cols, axis=1)
+    # cols = ['m', 't_ktovet_melea', 't_bayit_veknisa', 'knisa', 'k_status_hesder', 'k_rechov', 'lon', 'lat', 'id_ktovet']
+    merged = merged.drop(columns=['m'], axis=1)
 
-    merged.rename(columns={'x': 'Long'}, inplace=True)
-    merged.rename(columns={'y': 'Lat'}, inplace=True)
+    merged.rename(columns={'long': 'Long'}, inplace=True)
+    merged.rename(columns={'lat': 'Lat'}, inplace=True)
+    merged = merged.rename(columns={'uniqueid': 'UniqueId'})
 
     return merged
 
-
-def calc_distance_from_the_see_TLV(X_coordinate, Y_coordinate):
-    north_x = 180471
-    north_y = 672391
-    south_x = 177333
-    south_y = 663016
-    
-    m = (south_y - north_y) / (south_x - north_x)   
-    b = north_y - (m * north_x)
-    
-    numerator = abs(m * X_coordinate - Y_coordinate + b)
-    denominator = math.sqrt(m**2 + 1)
-    return numerator / denominator
-
-
-def distance_from_sea_tlv(df):
-    df = df.dropna(subset=['Lat', 'Long']).reset_index(drop=True)
-    latitudes = df['Long'].astype(float)
-    longitudes = df['Lat'].astype(float)
-    distances = [calc_distance_from_the_see_TLV(lat, lon) for lat, lon in zip(latitudes, longitudes)]
-    df['Distance_sea'] = distances
-    df['Distance_sea'] = df['Distance_sea'].astype(np.int32)
-    return df
-
-def calc_distance_from_train_station(df):
-    stations = [(179820.47, 662424.54), (180619, 664469.56), (181101.44, 665688.78), (181710.96, 667877.05)]
-    df['Train'] = [int(min(abs(station[0]-row['Long']) + abs(station[1]-row['Lat']) for station in stations)) for _, row in df.iterrows()]
-    return df
 
 
 def add_neighborhood_column(df):
@@ -334,125 +310,158 @@ def clean_outliers(df):
     return df
 
 
-def street_and_neighborhood_rank(df, column):
-    rank_dict = {}
-    years = df['Year'].unique()
+def update_neighborhood_street_token(df):
+    df['Street'] = df['Street'].str.strip().str.replace("'", "")
+    df['Neighborhood'] =df['Neighborhood'].str.strip()
 
-    for year in years:
-        df_by_year = df[df.loc[:, 'Year'] == year]
+    replacements_street = {
+            "כרמייה": "כרמיה"
+        }
 
-        rank_group_price = df_by_year.groupby(column)['Price'].sum().reset_index()
-        rank_group_size = df_by_year.groupby(column)['Size'].sum().reset_index()
+    replacements_neighborhood = {
+            "'": "",
+            "-": " ",
+            "נווה אביבים": "נווה אביבים וסביבתה",
+            "לב תל אביב, לב העיר צפון": "הצפון הישן החלק הצפוני",
+            "נוה": "נווה",
+            "גני צהלה, רמות צהלה": "גני צהלה",
+            "נווה אליעזר וכפר שלם מזרח": "כפר שלם מזרח נווה אליעזר",
+            "גני שרונה, קרית הממשלה": "גני שרונה",
+            "הצפון הישן   דרום": "הצפון החדש החלק הדרומי",
+            "מכללת תל אביב יפו, דקר": "דקר"
+        }
 
-        rank_group_size.loc[:, 'Size'] = rank_group_size.loc[:, 'Size'].astype(np.int64)
-        rank_group_price.loc[:, 'Price'] = rank_group_price.loc[:, 'Price'].astype(np.int64)
+    for old, new in replacements_street.items():
+        df['Street'] = df['Street'].str.replace(old, new)
 
-        rank_group = rank_group_price.merge(rank_group_size, on=column)
-        rank_group.loc[:, 'Rank'] = rank_group.loc[:, 'Price'] / rank_group.loc[:, 'Size']
+    for old, new in replacements_neighborhood.items():
+        df['Neighborhood'] =df['Neighborhood'].str.replace(old, new)
+    return df
 
-        rank_group.loc[:, 'Rank'] = rank_group.loc[:, 'Rank'].astype(np.int32)
-        rank_group = rank_group.sort_values(by='Rank', ascending=False)
+from utils.base import check_for_match
+def parcel_rank(df):
+    count = 0
+    df['Helka_rank'] = np.nan
 
-        rank_dict[year] = rank_group
+    df = df.dropna(subset=['Gush', 'Helka']).reset_index(drop=True)
+    df['Gush'] = df['Gush'].astype(np.int32)
+    df['Helka'] = df['Helka'].astype(np.int32)
+    df_nadlan = table_to_df('nadlan',['gush', 'helka', 'helka_rank'])
+    df_nadlan['gush_Helka'] = df_nadlan['gush'].astype(str) + df_nadlan['helka'].astype(str)
+    column = 'Gush_Helka'
+    df[column] = df['Gush'].astype(str) + df['Helka'].astype(str)
+    df[column] = df[column].str.replace('.', '', regex=False)
+
+    for index, row in df.iterrows():
+        gush_helka = row['Gush_Helka']
+        match = df_nadlan.loc[(df_nadlan['gush_Helka'] == gush_helka), 'helka_rank']
+
+        if match.empty:
+            match = check_for_match(df_nadlan, gush_helka)
+
+        if not match.empty:
+            df.at[index, 'Helka_rank'] = match.values[0]
+
+        if match.empty:
+            count += 1
+
+        df['Helka_rank'] = df['Helka_rank'].fillna(df_nadlan['helka_rank'].mean()).astype(np.int32)
+    df = df.drop(columns='Gush_Helka')
+
+    return df
+
+
+def general_rank(df, column):
+    df = update_neighborhood_street_token(df)
+    df = df.dropna(subset=['Neighborhood', 'Street']).reset_index(drop=True)
+
+    columns_needed = [
+        'year', 'neighborhood',
+        'street', 'gush', 'street_rank',
+        'neighborhood_rank', 'gush_rank'
+    ]
+    df_nadlan = table_to_df('nadlan', columns_needed)
 
     new_column_name = column + '_rank'
-
     df[new_column_name] = np.nan
 
     for index, row in df.iterrows():
-        year = row['Year']
-        street = row[column]
-        temp_df = rank_dict[year]
+        year = int(row['Year'])
+        col_to_rank = row[column]
+        try:
+            col_to_rank = int(row[column])
+        except:
+            pass
 
-        match = temp_df[temp_df[column] == street]['Rank']
-        df.loc[index, new_column_name] = match.iloc[0]
+        match = df_nadlan.loc[
+            (df_nadlan[column.lower()] == col_to_rank) & (df_nadlan['year'] == year),
+            new_column_name.lower()
+        ]
 
+        if not match.empty:
+            df.at[index, new_column_name] = match.iloc[0]
+        else:
+            print(f"No match found for Index: {index}, Year: {year}, col_to_rank: {col_to_rank}")
+
+            match = df_nadlan.loc[
+                (df_nadlan[column.lower()] == col_to_rank) & (df_nadlan['year'] == year - 1),
+                new_column_name.lower()
+            ]
+
+            if not match.empty:
+                df.at[index, new_column_name] = match.iloc[0]
+
+    col = new_column_name.lower()
+    df_nadlan[col] = df_nadlan[col].astype(np.int32)
+    mean = df_nadlan[col].mean()
+
+    r = df[df[new_column_name].isna()]
+    f = df[df[new_column_name].notna()]
+
+    print(f"col {col}\ntotal na: {r.shape}\ntotal not na: {f.shape}")
+
+    df[new_column_name] = df[new_column_name].fillna(mean)
     df[new_column_name] = df[new_column_name].astype(np.int32)
 
     return df
 
-def change_by_years(df):
-    years = df['Year'].unique()
-    today = df[df['Year'] == 2023]
-    avg_today = today['Price'].sum() / today['Size'].sum()
-    change = {}
-    for year in years:
-        df_year = df[df['Year'] == year]
-
-        avg_year = df_year['Price'].sum() / df_year['Size'].sum()
-
-        change[year] = avg_today / avg_year
-    return change
-
-
-def parcel_rank(df):
-    #     df = df.drop_duplicates(subset=['Price', 'Date'])
-    df = df[(df['Year'] < 2024)]
-
-    parcel_rank = {}
-
-    df.loc[:, 'Gush_Helka'] = df['Gush'] + '' + df['Helka']
-    df.loc[:, 'Helka_rank'] = np.nan
-    gush_helka = df['Gush_Helka'].unique()
-
-    change_p = change_by_years(df)
-
-    for gh in gush_helka:
-        df_gush_helka = df[df['Gush_Helka'] == gh]
-        max_year = df_gush_helka.loc[:, 'Build_year'].max()
-        result_df = df_gush_helka[(df_gush_helka['Year'] >= max_year) & (df_gush_helka['Year'] < 2024)].copy()
-        result_df['P_price'] = result_df['Year'].apply(lambda x: change_p[x]) * result_df['Price']
-        result_df['P_price'] = result_df['P_price'].astype(np.int32)
-
-        denominator = result_df['Size'].sum()
-        if denominator != 0:
-            rank = result_df['P_price'].sum() / denominator
-        else:
-            rank = np.nan
-        parcel_rank[gh] = rank
-
-    df.loc[:, 'Helka_rank'] = df.loc[:, 'Gush_Helka'].map(parcel_rank)
-    df = df.dropna(subset=['Helka_rank'])
-    df.loc[:, 'Helka_rank'] = df.loc[:, 'Helka_rank'].astype(np.int64)
-    df.drop(columns=['Gush_Helka'], inplace=True)
-
-    return df
-
-
-
-
 def run_nadlan_clean():
     try:
-        df = pd.read_csv("C:/Users/yoavl/NextRoof/Data/Nadlan.csv")
+        df = pd.read_csv("C:/Users/yoavl/NextRoof/Data/nadlan_p.csv",index_col=0)
         print(f"start shape : {df.shape}")
         df = rename_cols_update_data_types(df)
         df = fill_missing_addresses(df)
         df = rep(df)
         df = floor_to_numeric(df, floors)
-        df_a = pd.read_csv("C:/Users/yoavl/NextRoof/Data/Addresses.csv")
-        df_a = edit_addresses(df_a)
-        df_m = megre_df(df, df_a)
-        # df_m = distance_from_sea_tlv(df_m)
-        # df_m = calc_distance_from_train_station(df_m)
+            # df_a = pd.read_csv("C:/Users/yoavl/NextRoof/Data/Addresses.csv")
+            # df_a = edit_addresses(df_a)
+        df_m = megre_df(df)
         df_m = add_neighborhood_column(df_m)
         df_m = fill_missing_neighborhood(df_m)
         # df_m = fill_rooms(df_m)
         df_m = add_missing_floors(df_m)
         df_m = fill_missing_type(df_m)
         df_m = add_neighborhood_column(df_m)
-        df_m = street_and_neighborhood_rank(df_m, 'Street')
-        df_m = street_and_neighborhood_rank(df_m, 'Neighborhood')
+
+        df_m = general_rank(df_m, 'Street')
+
+        df_m = general_rank(df_m, 'Neighborhood')
         df_m = clean_outliers(df_m)
-        df_m = street_and_neighborhood_rank(df_m, 'Gush')
+        df_m = general_rank(df_m, 'Gush')
         df_m = parcel_rank(df_m)
         df_m['New'].fillna(0, inplace=True)
         df_m['New'] = df_m['New'].astype(np.int32)
-        df_m.to_csv('C:/Users/yoavl/NextRoof/Data/Nadlan_clean.csv')
+        df_m.to_csv('C:/Users/yoavl/NextRoof/Data/nadlan_clean_p.csv')
+
         print(f"final nadlan shape : {df_m.shape}")
         monitor_data['Clean']['nadlan']['Total_size'] = df_m.shape
         monitor_data['Clean']['nadlan']['status'] = 'Success'
 
     except Exception as e:
+        error_message = f"{e}\n{traceback.format_exc()}"
+        print(f"error :{error_message}")
         monitor_data['Clean']['nadlan']['status'] = 'Fail'
         monitor_data['Clean']['nadlan']['error'] = e
+
+
 

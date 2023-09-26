@@ -1,59 +1,36 @@
 # NextRoof - Algorithm 
 
-Welcome to NextRoof - Algorithm ! Our aim is to provide a comprehensive platform for finding real estate properties in Tel Aviv, Israel. Whether you're a potential homeowner or an investor, this project offers something for everyone.
+NextRoof is an advanced web platform leveraging artificial intelligence to provide real-time estimations for real estate asset values in Israel. At its heart, a dynamic recommendation engine is powered by intricate machine learning algorithms that adapt to market fluctuations. Additionally, our system actively highlights lucrative deals from various online sources. This repository is dedicated to the core algorithm behind NextRoof.
+
+The development of the project followed these stages:
+
+**1. Data Collection** - Employed sophisticated methods for data extraction while evading blocks. This ensured rapid and clean data accumulation from multiple sources.
+
+**2. Data Cleaning** - The data underwent rigorous cleaning. We used techniques like regex and external websites for data completeness and removed any irrelevant data.
+
+**3. Data Visualization** - This phase helped in data analysis, ensuring its reliability and quality.
+
+**4. Data Engineering** - Our secret sauce! Through extensive research, we optimized the dataset to significantly enhance our prediction models, surpassing other market leaders in real estate prediction.
+
+**4. Machine learning** - After thorough research, we chose a stacking method combining algorithms like *RandomForestRegressor*, *CatBoostRegressor*, *XGBRegressor*, and *GradientBoostingRegressor*. A *LinearRegression* model serves as our meta-model.
+
+**5. Market Deployment** - After training and testing the model is ready for the next stage to preidct the deals that avileble on the market
 
 
+
+
+## Tech Stack:
+*Primary Development Language*: Python
+*Libreris*: Pandas, Numpy, Matplotlib,Sklearn 
+
+
+ **models MAE and R2 scores*
  ![plt1!](img/plot_model_scores.png)
+
  ![plt2!](img/result_plot.png)
 
- result_plot
-www.govmap.gov.il - a government website that provides access to real-estate transactions in Israel dating back to 1998.
-
-www.nadlan.gov.il - a government site that offers additional information on real-estate transactions in Israel.
-
-www.yad2.co.il - a popular Israeli website where individuals, brokers, and real-estate companies advertise their properties for sale.
-
-Project Development
-The project was developed in several stages:
-
-**1. Data collection** - The data was collected from the three sources mentioned above through crawling and using an external API. The information was divided into three tables: nadlan, govmap, madlan, and yad2.
-
-**2. Data cleaning** - Irrelevant data was removed from the govmap and nadlan tables, such as parking lots, shops, land, etc. The yad2 table was cleaned of transactions without prices, unreliable prices, and transactions from companies.
-
-**3. Data unification** - The data from govmap and nadlan was unified to provide more information on each transaction.
-
-**4. Data analysis** - Data visualization was used to research and analyze the data, assess its reliability and quality.
-
-**5. Machine learning** - The RandomForestRegressor model was used to produce reliable results.
-
-**6. Model testing** - The existing model was run on new transactions in the market (yad2 and madlan) to identify the most profitable transactions.
-
-
-**Place for Improvement**
-
-**The current model has some limitations and places for improvement, including:**
-
-Inaccurate prediction of transaction values - This is due to:
-A. The model being learned on outdated transactions, leading to a large discrepancy in results.
-
-Solution: Running the model on the most recent transactions.
-
-B. The data on real estate transactions taking time to be updated on government websites.
-
-Solution: Checking the percentage increase of real estate in the last year and incorporating it into the model's view.
-
-C. The difference between the advertised price and the closing price of the deal.
-
-Solution: Checking the difference and entering it manually in the model.
-
-Overall, the Real Estate TLV project provides a comprehensive platform for finding and analyzing real estate properties in Tel Aviv, Israel. We are continuously working to improve the accuracy and reliability of our results.
  
 ![heatmap!](img/heatmaptlv.png)
-
-
-
- ![DealFr!](img/DealFr.png)
-
 
 
 ![n_prices!](img/n_prices.png)
@@ -66,8 +43,8 @@ Python 3.11 or higher
 Jupyter Notebook
 Pandas, Numpy, Matplotlib, and Seaborn libraries
 
-
-img/DealFr.png
+## link for the website
+1. Visit [NextRoof]([www.nextroof.co.il](https://www.nextroof.co.il/))  https://www.nextroof.co.il/
 
 Contribution
-We welcome contributions to the Real Estate TLV project! If you have an idea for a new feature, or if you've found a bug that needs to be fixed, please open a new issue in the GitHub repository. We appreciate your help
+We welcome contributions to the NextRoof project! If you have an idea for a new feature, or if you've found a bug that needs to be fixed, please open a new issue in the GitHub repository. We appreciate your help

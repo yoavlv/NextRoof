@@ -4,7 +4,7 @@ import joblib
 from sklearn.metrics import r2_score, mean_absolute_error
 from setUp import data_prep
 from monitor import monitor_data
-
+import traceback
 
 def final_data(df, algo_data , name=None):
     """
@@ -16,7 +16,6 @@ def final_data(df, algo_data , name=None):
     """
     # Identify overlapping columns between df and algo_data excluding 'Item_id'
     overlapping_cols = [col for col in df.columns if col in algo_data.columns and col != 'Item_id']
-
 
 
     # Rename overlapping columns in algo_data with a suffix
@@ -57,7 +56,7 @@ def predict_data(df, model, item_id):
     X = df.drop('Price', axis=1)
 
     try:
-        scaler = joblib.load('scaler.pkl')
+        scaler = joblib.load('C:/Users/yoavl/NextRoof/Algorithms/scaler.pkl')
         X_scaled = scaler.transform(X)
         y_pred = model.predict(X_scaled)
     except Exception as e:
@@ -93,29 +92,30 @@ def save_data(df, path):
 
 
 def calc_results(yad2 = False, madlan =False):
-    name = 'yad2'
-    raw_data = pd.read_csv("C:/Users/yoavl/NextRoof/Data/yad_2_data_clean.csv", index_col=0)
 
     if madlan == True:
         name = 'madlan'
-        raw_data = pd.read_csv("C:/Users/yoavl/NextRoof/Data/madlan_data_clean.csv" , index_col=0)
+        raw_data = pd.read_csv("C:/Users/yoavl/NextRoof/Data/madlan_data_clean_p.csv" , index_col=0)
+    else:
+        name = 'yad2'
+        raw_data = pd.read_csv("C:/Users/yoavl/NextRoof/Data/yad2_data_clean_p.csv", index_col=0)
 
     try:
-        models = joblib.load('saved_models.pkl')
+        models = joblib.load('C:/Users/yoavl/NextRoof/Algorithms/saved_models.pkl')
         model = models['stacking']
         yad2_df, item_id = data_prep(yad2=yad2 ,madlan=madlan, accuracy=0, min_price=1200000, max_price=6000000)
         data = predict_data(yad2_df, model, item_id)
 
-
         data['df'] = final_data(raw_data,data['df'] , name)
-        save_data(data['df'], f"C:/Users/yoavl/NextRoof/Data/{name}_predict.csv")
+        save_data(data['df'], f"C:/Users/yoavl/NextRoof/Data/{name}_predict_p.csv")
         monitor_data['algo'][name]['r2'] = data['r2']
         monitor_data['algo'][name]['mae'] = data['mae']
         monitor_data['algo'][name]['status'] = 'Success'
-        print(monitor_data)
     except Exception as e:
+        error_message = f"{e}\n{traceback.format_exc()}"
+        print(error_message)
         monitor_data['algo'][name]['error'] = e
         monitor_data['algo'][name]['status'] = 'Fail'
 
-calc_results(madlan=True)
-calc_results(yad2=True)
+# calc_results(madlan=True)
+# calc_results(yad2=True)
