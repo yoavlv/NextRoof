@@ -6,8 +6,6 @@ Algorithms/models
 Algorithms/catboost_info
 Algorithms/.ipynb_checkpoints
 Algorithms/linear_regression_tuning.ipynb
-Algorithms/model_run.ipynb
-
 main/catboost_info
 Clean/sql_functions.py
 /catboost_info
