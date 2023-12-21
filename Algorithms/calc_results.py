@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import joblib
 from sklearn.metrics import r2_score, mean_absolute_error
-from setUp import data_prep
 from monitor import monitor_data
 import traceback
 
@@ -17,7 +16,6 @@ def final_data(df, algo_data , name=None):
     # Identify overlapping columns between df and algo_data excluding 'Item_id'
     overlapping_cols = [col for col in df.columns if col in algo_data.columns and col != 'Item_id']
 
-
     # Rename overlapping columns in algo_data with a suffix
     suffix = "_x"
     algo_data_renamed = algo_data.rename(columns={col: col + suffix for col in overlapping_cols})
@@ -25,11 +23,9 @@ def final_data(df, algo_data , name=None):
     # Merge df with the renamed algo_data
     merged_df = pd.merge(df, algo_data_renamed, on='Item_id', how='inner')
     if name == 'yad2':
-        images = pd.read_csv("C:/Users/yoavl/NextRoof/Data/yad_2_data.csv", index_col=0)
+        images = pd.read_csv("C:/Users/yoavl/NextRoof/Data/yad_2_data_p.csv", index_col=0)
         merged_df = pd.merge(merged_df, images[['Item_id', 'Images']], on='Item_id', how='left')
 
-
-    # Update the index
     merged_df.index += 1
 
     # Drop duplicates based on 'Item_id'
@@ -42,7 +38,6 @@ def final_data(df, algo_data , name=None):
 
     # Return the merged dataframe sorted by 'Difference'
     return merged_df.sort_values(by="Difference")
-
 
 def predict_data(df, model, item_id):
     """
@@ -116,6 +111,3 @@ def calc_results(yad2 = False, madlan =False):
         print(error_message)
         monitor_data['algo'][name]['error'] = e
         monitor_data['algo'][name]['status'] = 'Fail'
-
-# calc_results(madlan=True)
-# calc_results(yad2=True)

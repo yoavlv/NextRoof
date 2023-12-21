@@ -13,7 +13,7 @@ def result_plot(scores):
     ax.set_ylabel('Accuracy (Mean)')
     ax.set_title('Model Performance Comparison')
     plt.savefig("C:/Users/yoavl/NextRoof/img/result_plot.png")
-
+    plt.close(fig)
 
 def plot_model_scores(scores):
     r2_scores = []
@@ -34,3 +34,4 @@ def plot_model_scores(scores):
     ax2.set_xlabel('MAE Score')
     ax2.set_title('Model MAE Scores')
     plt.savefig("C:/Users/yoavl/NextRoof/img/plot_model_scores.png")
+    plt.close(fig)
