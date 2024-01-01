@@ -13,8 +13,10 @@ from email.message import EmailMessage
 import smtplib
 import json
 from handlers import city_dict
+
+
 def send_daily_status(data):
-    formatted_data = json.dumps(data, indent=4)
+    formatted_data = json.dumps(data, indent=4, ensure_ascii=False)
     email_sender = 'yoavlv12@gmail.com'
     email_pass = password
     email_receiver = 'yoavlv12@gmail.com'
@@ -25,24 +27,32 @@ def send_daily_status(data):
     em['To'] = email_receiver
     em['Subject'] = subject
     context = ssl.create_default_context()
-    with smtplib.SMTP_SSL('smtp.gmail.com',465,context=context) as smtp:
-        smtp.login(email_sender,email_pass)
-        smtp.sendmail(email_sender,email_receiver ,em.as_string())
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
+        smtp.login(email_sender, email_pass)
+        smtp.sendmail(email_sender, email_receiver, em.as_string())
 
-def run_new():
+
+def run_new(train=True, clean=False, maintenance=False):
     run_status = {}
-    current_time = datetime.datetime.now()
-    run_status['date'] = str(datetime.datetime(year=current_time.year, month=current_time.month, day=current_time.day,hour=current_time.hour, minute=current_time.minute))
-    run_status['nadlan_main'] = nadlan_main(city_dict, num_of_pages=2)
-    run_status['train_model'] = train_model_main(city_dict)
-    run_status['madlan_main'] = madlan_main(city_dict)
-    send_daily_status(run_status)
+    # current_time = datetime.datetime.now()
+    # run_status['date'] = str(datetime.datetime(year=current_time.year, month=current_time.month, day=current_time.day,
+    #                                            hour=current_time.hour, minute=current_time.minute))
+    # run_status['nadlan_main'] = nadlan_main(city_dict, num_of_pages=100, maintenance=maintenance)
+    # run_status['train_model'] = False
+    if train:
+        run_status['train_model'] = train_model_main(city_dict)
+
+    # run_status['madlan_main'] = madlan_main(city_dict, clean)
+    try:
+        send_daily_status(run_status)
+    except:
+        pass
     return run_status
 
 
-status = run_new()
-print(status)
+status = run_new(train=True, clean=True, maintenance=False)
 
+print(status)
 
 
 def find_errors(data, errors, path=""):

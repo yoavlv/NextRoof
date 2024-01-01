@@ -1,5 +1,5 @@
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import  RandomForestRegressor , GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from catboost import CatBoostRegressor
 from xgboost import XGBRegressor
 
@@ -22,7 +22,7 @@ best_params = {
 
 params = {
     'CatBoostRegressor': {'iterations': [1000, 1200],'learning_rate': [0.01,0.05],'depth': [8,10],'l2_leaf_reg': [3,9]},
-    'RandomForestRegressor': {'bootstrap': [True, False],'max_depth': [5, 10, 15],'max_features': ['auto', 'sqrt'],'min_samples_leaf': [1, 2, 4],'n_estimators': [100, 150, 200],'min_samples_split': [2, 5, 10]},
+    'RandomForestRegressor': {'bootstrap': [True, False],'max_depth': [8, 10],'max_features': ['log2', 'sqrt'],'min_samples_leaf': [1, 2, 4],'n_estimators': [100, 150, 200],'min_samples_split': [2, 5, 10]},
     'XGBRegressor': {'learning_rate': [0.07, 0.1, 0.15],'max_depth': [5, 7, 10],'n_estimators': [150, 200, 250],'max_leaves':[2,3,4]},
     'LinearRegression': {'fit_intercept': [True, False], 'positive': [True, False]},
     'GradientBoostingRegressor': {'n_estimators': [100,200,300], 'learning_rate': [0.1,0.2,0.3], 'max_depth': [3,5,7]},

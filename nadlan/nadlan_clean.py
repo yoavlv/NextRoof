@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
-from monitor import monitor_data
 from utils.nadlan_utils import nominatim_api
-from sql_reader_nadlan import read_raw_data_table
-from sql_save_nadlan import add_new_deals_nadlan_clean
+from .nadlan_utils import complete_neighborhood
+from sql_reader_nadlan import read_raw_data_table ,read_from_nadlan_clean,distinct_city_list
+from sql_save_nadlan import add_new_deals_nadlan_clean , add_new_deals_nadlan_clean_neighborhood_complete
 from tqdm import tqdm
 import traceback
 import logging
 logging.basicConfig(level=logging.WARNING)
+
+
 def rename_cols_update_data_types(df):
     # Extract and clean the city name
     df['City'] = df['FULLADRESS'].str.split(',', n=2, expand=True)[1].str.strip()
@@ -64,7 +66,6 @@ def fill_missing_addresses_gen(df):
     df[['Gush', 'Helka', 'Tat']] = df['GUSH'].str.split('-|/', n=2, expand=True).astype(np.int32)
     df = df.drop(columns='GUSH', axis=1)
     missing_addresses = df.loc[df['DISPLAYADRESS'].isna(), ['Gush', 'Helka']]
-    print(missing_addresses.shape[0])
     for index, row in missing_addresses.iterrows():
         gush = row['Gush']
         helka = row['Helka']
@@ -213,7 +214,21 @@ def columns_strip_df(df):
         except:
             pass
     return df
-def run_nadlan_clean():
+
+
+def maintenance_neighborhood(table):
+    big_df = pd.DataFrame()
+    city_list = distinct_city_list(table)
+    for city in city_list:
+        df = read_from_nadlan_clean(city)
+        df = complete_neighborhood(df)
+
+        big_df = pd.concat([big_df, df], ignore_index=True)
+
+    add_new_deals_nadlan_clean_neighborhood_complete(big_df)
+    return big_df
+
+def run_nadlan_clean(maintenance=False):
     nadlan_clean_status = {}
     try:
         df = read_raw_data_table(num_of_rows=50000)
@@ -229,7 +244,9 @@ def run_nadlan_clean():
         df['New'].fillna(0, inplace=True)
         df['New'] = df['New'].astype(np.int32)
         data = add_new_deals_nadlan_clean(df)
-
+        data2 = add_new_deals_nadlan_clean(df,'13.50.98.191')
+        if maintenance:
+            maintenance_neighborhood('nadlan_clean')
         nadlan_clean_status['success'] = True
         nadlan_clean_status['new_rows'] = data['new_rows']
         nadlan_clean_status['conflict_rows'] = data['conflict_rows']

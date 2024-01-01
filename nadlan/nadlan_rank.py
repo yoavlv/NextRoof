@@ -1,5 +1,5 @@
-from sql_save_nadlan import add_new_deals_nadlan_rank
-from sql_reader_nadlan import read_from_nadlan_clean
+from .sql_save_nadlan import add_new_deals_nadlan_rank
+from .sql_reader_nadlan import read_from_nadlan_clean
 import numpy as np
 import datetime
 import traceback
@@ -50,7 +50,7 @@ def create_street_and_neighborhood_rank(df, column):
 
 def change_by_years(df):
     years = df['year'].unique()
-    today = df[df['year'] == 2021]
+    today = df[df['year'] == 2023]
     avg_today = today['price'].sum() / today['size'].sum()
     change = {}
     for year in years:
@@ -111,6 +111,8 @@ def main_nadlan_rank(city):
         df = create_street_and_neighborhood_rank(df, 'street')
         df = create_parcel_rank(df)
         data = add_new_deals_nadlan_rank(df)
+        data2 = add_new_deals_nadlan_rank(df, '13.50.98.191')
+
         nadlan_rank_status['success'] = True
         nadlan_rank_status['new_rows'] = data['new_rows']
         nadlan_rank_status['updated_rows'] = data['updated_rows']

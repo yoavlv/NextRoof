@@ -1,7 +1,7 @@
 import pandas as pd
 import time
 import re
-from Scraping.network import cookies, json_data, headers , city_code
+from .madlan_utils import cookies, json_data, headers
 import traceback
 from requests.adapters import HTTPAdapter
 import requests
@@ -97,10 +97,11 @@ def madlan_scrape():
     status = {}
     try:
         df_madlan = get_madlan_data(json_data, cookies, headers)
-        data = add_new_deals_madlan_raw(df_madlan)
-        status['success'] = True
-        status['new_rows'] = data['new_rows']
-        status['updated_rows'] = data['updated_rows']
+        if not df_madlan.empty:
+            data = add_new_deals_madlan_raw(df_madlan)
+            status['success'] = True
+            status['new_rows'] = data['new_rows']
+            status['updated_rows'] = data['updated_rows']
 
     except Exception as e:
         error_message = f"{e}\n{traceback.format_exc()}"

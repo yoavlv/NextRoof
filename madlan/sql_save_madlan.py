@@ -116,7 +116,7 @@ def add_new_deals_madlan_clean(df):
             'updated_rows': updated_row_count,
         }
 
-def add_new_deals_madlan_rank(df):
+def add_new_deals_madlan_rank(df,host_name='localhost'):
     new_row_count = 0
     updated_row_count = 0
     def strip_string(x):
@@ -134,7 +134,7 @@ def add_new_deals_madlan_rank(df):
         else:
             df[col] = df[col].astype(float)
 
-    conn = get_db_connection(db_name='nextroof_db')
+    conn = get_db_connection(db_name='nextroof_db', host_name=host_name)
     with conn:
         with conn.cursor() as cursor:
             for _, row in df.iterrows():
@@ -199,10 +199,10 @@ def add_new_deals_madlan_rank(df):
             'updated_rows': updated_row_count,
         }
 
-def add_new_deals_madlan_predict(df):
+def add_new_deals_madlan_predict(df, host_name='localhost'):
     new_row_count = 0
     updated_row_count = 0
-    conn = get_db_connection(db_name='nextroof_db')
+    conn = get_db_connection(db_name='nextroof_db' ,host_name=host_name)
 
     with conn:
         with conn.cursor() as cursor:

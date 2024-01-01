@@ -3,12 +3,13 @@ import pandas as pd
 import logging
 logger = logging.getLogger(__name__)
 import re
-import psycopg2
 import time
 import httpx
+import numpy as np
 df_cache = None
 logging.basicConfig(level=logging.WARNING)
 from backoff import on_exception, expo
+from dev import get_db_connection
 
 city_dict = {
     'אשדוד': 1100,
@@ -29,19 +30,6 @@ city_dict = {
     'רעננה': 2600,
     'תל אביב-יפו': 2700
 }
-def create_db_connection():
-    try:
-        conn = psycopg2.connect(
-            host="localhost",
-            dbname='nextroof_db',
-            user='postgres',
-            password="43234323",
-            port=5432
-        )
-        return conn
-    except Exception as e:
-        logger.error(f"Database connection failed: {e}")
-        return None
 
 
 def split_address(address):
@@ -58,7 +46,7 @@ def split_address(address):
 
 def fetch_all_for_city(city):
     global df_cache
-    conn = create_db_connection()
+    conn = get_db_connection(db_name='nextroof_db')
     with conn.cursor() as cur:
         cur.execute("SELECT * FROM addr_cache WHERE city = %s", (city,))
         records = cur.fetchall()
@@ -68,7 +56,7 @@ def fetch_all_for_city(city):
 
 
 def fetch_all_cache_data():
-    conn = create_db_connection()
+    conn = get_db_connection(db_name='nextroof_db')
     global df_cache
     with conn.cursor() as cur:
         cur.execute("SELECT * FROM addr_cache ")
@@ -78,16 +66,6 @@ def fetch_all_cache_data():
         df_cache = pd.DataFrame(records, columns=columns)
 
 
-def fetch_from_db(cache_key):
-    conn = create_db_connection()
-    with conn.cursor() as cur:
-        cur.execute("SELECT * FROM addr_cache WHERE key = %s", (cache_key,))
-        record = cur.fetchone()
-        if record:
-            columns = ['addr_key', "key", "city", "neighborhood", "street", "home_number", "lat", "long", "type", 'x',
-                       'y', 'zip', 'created_at', 'gush', 'helka', 'build_year', 'floors']
-            return dict(zip(columns, record))
-    return None
 
 
 def fetch_from_df(cache_key):
@@ -100,7 +78,7 @@ def fetch_from_df(cache_key):
 
 def save_to_db(cache_key, data):
     global df_cache
-    conn = create_db_connection()
+    conn = get_db_connection(db_name='nextroof_db')
     if conn:
         try:
             with conn.cursor() as cur:
@@ -205,11 +183,9 @@ def govmap_addr(addr):
 
     except requests.HTTPError as e:
         print(f"HTTP error occurred: {e}")
-        # Raising the exception to trigger backoff
         raise
     except Exception as e:
         print(f"An error occurred with GovMap API: {e}")
-        # Not retrying on other exceptions
 
     return {'success': False}
 
@@ -251,6 +227,37 @@ def nominatim_addr(query):
             return result
 
     return result
+
+
+def calc_distance(df, x2, y2):
+    distance = 10000
+    closest_neighborhood = None
+
+    for index, row in df.iterrows():
+        x1, y1 = row['x'], row['y']
+        temp_distance = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+        if distance > temp_distance:
+            distance = temp_distance
+            closest_neighborhood = row['neighborhood']
+
+            if distance < 40:
+                break
+    return closest_neighborhood
+
+
+def complete_neighborhood(df):
+    df['neighborhood'] = df['neighborhood'].replace('', np.nan)
+    df_na = df[df['neighborhood'].isna()].copy()
+    df_notna = df[df['neighborhood'].notna()]
+
+    for index in df_na.index:
+        row = df_na.loc[index]
+        x, y = row['x'], row['y']
+        neighborhood = calc_distance(df_notna, x, y)
+        df_na.at[index, 'neighborhood'] = neighborhood
+
+    return pd.concat([df_na, df_notna], ignore_index=True)
 
 payload = {
     "ObjectID": "5000",

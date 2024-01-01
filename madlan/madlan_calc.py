@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 import joblib
 from sklearn.metrics import r2_score, mean_absolute_error
-from .sql_reader_madlan import read_from_madlan_rank
+from .sql_reader_madlan import read_from_madlan_rank , read_model_scaler_from_db
 from .sql_save_madlan import add_new_deals_madlan_predict
 import traceback
 
@@ -14,7 +14,6 @@ def data_prep_madlan(df,city_id, start_year=2005, end_year=2024, min_price=80000
     df.dropna(subset=['size','price','build_year'], inplace=True)
     df['last_update'] = pd.to_datetime(df['last_update'])
     df['year'] = df['last_update'].dt.year.astype(np.int32)
-
     df.loc[:, 'size'] = df['size'].astype(float).astype(np.int32)
     df.loc[:, 'price'] = df['price'].astype(float).astype(np.int32)
     df.loc[:, 'build_year'] = df['build_year'].astype(float).astype(np.int32)
@@ -35,8 +34,7 @@ def data_prep_madlan(df,city_id, start_year=2005, end_year=2024, min_price=80000
 
     df = df.reindex(columns=["rooms", "floor", "size", "price", "build_year", "floors",
                              "year", "age", "neighborhood_rank", "street_rank", "helka_rank", "new"])
-    models = joblib.load(f'C:/Users/yoavl/NextRoof/Algorithms/models/{city_id}_saved_models.pkl')
-    model = models['stacking']
+    model = read_model_scaler_from_db(city_id, model=True)
 
     data = predict_data_madlan(df, model, item_id,city_id)
     return data
@@ -54,7 +52,7 @@ def predict_data_madlan(df, model, item_id,city_id):
     X = df.drop('price', axis=1)
 
     try:
-        scaler = joblib.load(f'C:/Users/yoavl/NextRoof/Algorithms/models/{city_id}_scaler.pkl')
+        scaler = read_model_scaler_from_db(city_id, scaler=True)
         X_scaled = scaler.transform(X)
         y_pred = model.predict(X_scaled)
     except Exception as e:
@@ -85,7 +83,13 @@ def main_madlan_calc(city_obj):
     try:
         df = read_from_madlan_rank(city_name)
         data_calc = data_prep_madlan(df, city_id)
-        data = add_new_deals_madlan_predict(data_calc['df'])
+        data = {}
+        data['new_rows'] = 'Empty DataFrame'
+        data['updated_rows'] = 'Empty DataFrame'
+        if data_calc['df']:
+            data = add_new_deals_madlan_predict(data_calc['df'])
+            data2 = add_new_deals_madlan_predict(data_calc['df'], '13.50.98.191')
+
 
         status.update({
             'success': True,

@@ -4,12 +4,13 @@ from .nadlan_utils import payload ,city_code
 import time
 import concurrent.futures
 import pandas as pd
-from monitor import monitor_data
 import httpx
 from .sql_save_nadlan import add_new_deals_nadlan_raw
+from .sql_reader_nadlan import read_raw_data_table_by_gush
 import logging
 logging.basicConfig(level=logging.WARNING)
 import traceback
+import numpy as np
 
 url = "https://www.nadlan.gov.il/Nadlan.REST/Main/GetAssestAndDeals"
 
@@ -58,21 +59,31 @@ def get_city_data(payload,city_code,num_of_pages=5):
     return new_df
 
 
-def main_loop(city_code_list,payload,num_of_pages):
+def main_loop(city_code_dict, payload, num_of_pages):
     df = pd.DataFrame()
-    for code in city_code_list:
-        new_df = get_city_data(payload,code , num_of_pages =num_of_pages)
+    for city, city_code in city_code_dict.items():
+        new_df = get_city_data(payload, city_code, num_of_pages=num_of_pages)
+        if 'FULLADRESS' in new_df.columns:
+            new_df['FULLADRESS'] = new_df['FULLADRESS'].replace('', np.nan)
+            missing_fulladress = new_df['FULLADRESS'].isna()
+            new_df.loc[missing_fulladress, 'FULLADRESS'] = new_df.loc[missing_fulladress, 'GUSH'].apply(
+            read_raw_data_table_by_gush)
+            new_df.dropna(subset=['FULLADRESS'], inplace=True)
+        else:
+            print(f"'FULLADRESS' column not found in data for city {city}")
+
         df = pd.concat([df, new_df], ignore_index=True)
         df.drop_duplicates(inplace=True)
-        df = df[df['FULLADRESS'].str.len() > 5]
     return df
 
-def run_nadlan(num_of_pages = 20 ,threads = 10 ):
+def run_nadlan_scrape(num_of_pages = 20 ,threads = 10 ):
     nadlan_scrape_status = {}
     try:
-        nadlan_df = main_loop(list(city_code.values()), payload , num_of_pages = num_of_pages )
+        nadlan_df = main_loop(city_code, payload , num_of_pages = num_of_pages)
+
         print(nadlan_df.shape)
         data = add_new_deals_nadlan_raw(nadlan_df)
+        print(data)
         nadlan_scrape_status['status'] = True
         nadlan_scrape_status['new_rows'] = data['new_rows']
         nadlan_scrape_status['conflict'] = data['conflict_rows']

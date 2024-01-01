@@ -1,6 +1,16 @@
 import pandas as pd
 import numpy as np
 from dev import get_db_engine
+from sqlalchemy import text
+
+
+def read_raw_data_table_by_gush(gush, num_of_rows=1):
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        query = text("SELECT fulladress FROM nadlan_raw WHERE gush = :gush ORDER BY dealdate DESC LIMIT :num_of_rows")
+        result = conn.execute(query, {'gush': gush, 'num_of_rows': num_of_rows}).fetchall()
+        fulladress_list = [row[0] for row in result]
+    return fulladress_list[0] if fulladress_list else np.nan
 
 def read_raw_data_table(num_of_rows=100, city=None):
     engine = get_db_engine()
@@ -57,3 +67,12 @@ def read_from_nadlan_clean(city):
     df.loc[:, 'gush'] = df['gush'].astype(float).astype(np.int32)
     df.loc[:, 'helka'] = df['helka'].astype(float).astype(np.int32)
     return df
+
+def distinct_city_list(table_name):
+    engine = get_db_engine(db_name='nextroof_db')
+    query = text(f"SELECT DISTINCT(city) FROM {table_name}")
+
+    with engine.connect() as connection:
+        result = connection.execute(query)
+        city_list = [row[0] for row in result]
+    return list(city_list)

@@ -8,28 +8,20 @@ from .sql_reader_madlan import read_from_madlan_clean
 import logging
 import traceback
 logging.basicConfig(level=logging.WARNING)
+
 def rank(city):
     df_rank = read_from_nadlan_rank(city)
     df = read_from_madlan_clean(city)
     df = df.dropna(subset=['neighborhood'])
 
-
     df_rank_gush_helka = df_rank[['gush', 'helka', 'helka_rank']].drop_duplicates(subset=['gush', 'helka'])
-
     df_rank_street = df_rank[['street', 'street_rank']].drop_duplicates(subset=['street'])
     df_rank_neighborhood = df_rank[['neighborhood', 'neighborhood_rank']].drop_duplicates(subset=['neighborhood'])
-
-    # Merge df with df_rank_gush_helka
     df_merged = pd.merge(df, df_rank_gush_helka, on=['gush', 'helka'], how='left')
-
-    # Merge the result with df_rank_street
     df_merged = pd.merge(df_merged, df_rank_street, on=['street'], how='left')
-
-    # Merge the result with df_rank_neighborhood
     df_merged = pd.merge(df_merged, df_rank_neighborhood, on=['neighborhood'], how='left')
 
     return df_merged
-
 
 def update_floors_and_build_year_by_helka(df,city):
     df_nadlan = read_from_nadlan_rank(city)
@@ -46,12 +38,10 @@ def update_floors_and_build_year_by_helka(df,city):
     df_merged = pd.merge(df_merged, df_nadlan[['gush', 'helka', 'build_year']], on=['gush', 'helka'], how='left',
                          suffixes=('', '_from_nadlan'))
 
-    # Update 'build_year' column in df only if it is NaN
     df_merged['build_year'].fillna(df_merged['build_year_from_nadlan'], inplace=True)
     df_merged.drop(columns=['build_year_from_nadlan'], axis=1, inplace=True)
 
     return df_merged
-
 
 def update_floors_and_build_year(df,city):
     df_nadlan = read_from_nadlan_rank(city)
@@ -60,15 +50,12 @@ def update_floors_and_build_year(df,city):
     df_build_year = df_nadlan[['street', 'home_number', 'neighborhood', 'build_year']].drop_duplicates(
         subset=['street', 'home_number'])
 
-    # Merging floors and build year information
     df_merged = pd.merge(df, df_floors, on=['street', 'home_number', 'neighborhood'], how='left')
     df_merged = pd.merge(df_merged, df_build_year, on=['street', 'home_number', 'neighborhood'], how='left',
                          suffixes=('', '_from_nadlan'))
 
-    # Update build_year in df only if it is NaN
     df_merged.loc[df_merged['build_year'].isna(), 'build_year'] = df_merged['build_year_from_nadlan']
 
-    # Drop the additional build_year column
     df_merged.drop(columns=['build_year_from_nadlan'], inplace=True)
 
     df_merged = update_floors_and_build_year_by_helka(df_merged,city)
@@ -100,6 +87,7 @@ def main_madlan_ranking(city):
         df = fill_nan_by_avg(df, 'build_year',city)
         df = fill_nan_by_avg(df, 'floors',city)
         data = add_new_deals_madlan_rank(df)
+        data2 = add_new_deals_madlan_rank(df,'13.50.98.191')
         status['success'] = True
         status['new_rows'] = data['new_rows']
         status['updated_rows'] = data['updated_rows']

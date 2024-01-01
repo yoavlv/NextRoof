@@ -5,41 +5,31 @@ import math
 sys.path.append('C:/Users/yoavl/NextRoof/utils')
 from utils.apis import enrich_df_with_location_data
 import traceback
-from .sql_reader_madlan import read_from_madlan_raw ,read_addr_table
+from .sql_reader_madlan import read_from_madlan_raw
 from .sql_save_madlan import add_new_deals_madlan_clean
+from nadlan.sql_reader_nadlan import read_from_nadlan_clean
 from tqdm import tqdm
+from .madlan_utils import min_point
 tqdm.pandas()
 import logging
 logging.basicConfig(level=logging.WARNING)
 
-def min_point(x, y, df):
-    distance = 10000
-    neighborhood = None
-    for index, row in df.iterrows():
-        df_x = row['x']
-        df_y = row['y']
-        df_neighborhood = row['neighborhood']
-        distance_check = math.sqrt(((df_x - x) ** 2) + ((df_y - y) ** 2))
-        if distance_check < distance:
-            if distance_check < 70:
-                return df_neighborhood
-            distance = distance_check
-            neighborhood = df_neighborhood
-
-    return neighborhood
 
 
 def find_nearest_neighborhood(df,city):
     df = df.dropna(subset=['x'])
+    df.loc[:, 'neighborhood'] = df['neighborhood'].replace('', np.nan)
     df_no_neighborhood = df[df['neighborhood'].isna()].copy()
     df_neighborhood = df[df['neighborhood'].notna()]
 
     nearest_neighborhoods = []
-    addr_table = read_addr_table(city)
+    nadlan_clean = read_from_nadlan_clean(city)
+    nadlan_clean['neighborhood'] = nadlan_clean['neighborhood'].replace('', np.nan)
+    nadlan_clean = nadlan_clean.dropna(subset=['neighborhood'])
     for index, row in tqdm(df_no_neighborhood.iterrows(), total=df_no_neighborhood.shape[0]):
         x = row['x']
         y = row['y']
-        nearest_neighborhood = min_point(x, y, addr_table)
+        nearest_neighborhood = min_point(x, y, nadlan_clean, target_distance=50)
         nearest_neighborhoods.append(nearest_neighborhood)
 
     df_no_neighborhood['neighborhood'] = nearest_neighborhoods
@@ -47,6 +37,7 @@ def find_nearest_neighborhood(df,city):
     df = pd.concat([df_no_neighborhood, df_neighborhood])
     df = df.dropna(subset=['neighborhood'])
     return df
+
 
 def main_madlan_clean(city):
     status = {}
