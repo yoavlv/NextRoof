@@ -6,7 +6,6 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.ensemble import StackingRegressor ,RandomForestRegressor , GradientBoostingRegressor
 from sklearn.metrics import r2_score ,mean_absolute_error
 from catboost import CatBoostRegressor
-import joblib
 from Algorithms.model_data import params, best_params, models_list, lean_params
 from Algorithms.model_plots import result_plot , plot_model_scores
 from sklearn.model_selection import train_test_split

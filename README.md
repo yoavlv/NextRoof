@@ -1,8 +1,9 @@
 # NextRoof - Algorithm 
 
-NextRoof is an advanced web platform leveraging artificial intelligence to provide real-time estimations for real estate asset values in Israel. At its heart, a dynamic recommendation engine is powered by intricate machine learning algorithms that adapt to market fluctuations. Additionally, our system actively highlights lucrative deals from various online sources. This repository is dedicated to the core algorithm behind NextRoof.
-
-The development of the project followed these stages:
+NextRoof is an innovative web platform that revolutionizes real estate valuation in Israel by utilizing Machine Learning. 
+Central to NextRoof is a dynamic recommendation engine, driven by sophisticated machine learning algorithms that seamlessly adjust to market trends. 
+Our system meticulously gathers the latest market data daily, processes it, and stores it in a cloud-based database. Users can effortlessly calculate up-to-date asset values using our calculator, reflecting the current market conditions, and explore the latest transactions directly on our website.
+This repository is home to the essential algorithm that powers NextRoof's core functionalities.
 
 **1. Data Collection** - Employed sophisticated methods for data extraction while evading blocks. This ensured rapid and clean data accumulation from multiple sources.
 
@@ -21,7 +22,7 @@ The development of the project followed these stages:
 
 ## Tech Stack:
 *Primary Development Language*: Python
-*Libreris*: Pandas, Numpy, Matplotlib,Sklearn 
+*Libreris*: Pandas, Numpy, Matplotlib,Sklearn, Sqlalchemy and Xgboost
 
 
  **models MAE and R2 scores*
@@ -35,16 +36,12 @@ The development of the project followed these stages:
 
 ![n_prices!](img/n_prices.png)
 
-![Yad2!](img/Yad2.png)
 
 **Requirements**
 To run this project, you will need:
 Python 3.11 or higher
 Jupyter Notebook
-Pandas, Numpy, Matplotlib, and Seaborn libraries
+Pandas, Numpy, Matplotlib, Sklearn, Xgboost, Sqlalchemy and Seaborn libraries
 
 ## link for the website
 1. Visit [NextRoof]([www.nextroof.co.il](https://www.nextroof.co.il/))  https://www.nextroof.co.il/
-
-Contribution
-We welcome contributions to the NextRoof project! If you have an idea for a new feature, or if you've found a bug that needs to be fixed, please open a new issue in the GitHub repository. We appreciate your help
