@@ -1,6 +1,6 @@
 # NextRoof - Algorithm 
 
-![nextroof_workflow!](img/nextroof workflow.png)
+![nextroof_workflow!](img/nextroof_workflow.png)
 
 NextRoof is an innovative web platform that revolutionizes real estate valuation in Israel by utilizing Machine Learning. 
 Central to NextRoof is a dynamic recommendation engine, driven by sophisticated machine learning algorithms that seamlessly adjust to market trends. 
