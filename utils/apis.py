@@ -46,8 +46,8 @@ def get_gush_helka_api(city,street,home_number):
                     }
                 except:
                     result = {
-                        'gush':0,
-                        'helka':0,
+                        'gush':np.nan,
+                        'helka':np.nan,
                     }
             return result
     except requests.exceptions.RequestException as e:
@@ -57,10 +57,14 @@ def get_gush_helka_api(city,street,home_number):
 
 
 def enrich_df_with_location_data(df, nadlan=True):
+    df = df.copy()
     df['gush_helka'] = df.progress_apply(
         lambda row: get_gush_helka_api(row['city'], row['street'], row['home_number']), axis=1)
+
+
     df['gush'] = df['gush_helka'].apply(lambda x: x.get('gush', '') if x else np.nan)
     df['helka'] = df['gush_helka'].apply(lambda x: x.get('helka', '') if x else np.nan)
+    df = df.dropna(subset =['gush'])
 
     df['Details'] = df.progress_apply(
         lambda row: nominatim_api(row['city'], row['street'], home_number=row['home_number'],gush = row['gush'],helka=row['helka'],build_year=row['build_year']), axis=1)

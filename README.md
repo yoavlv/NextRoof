@@ -1,9 +1,12 @@
 # NextRoof - Algorithm 
 
+![nextroof_workflow!](img/nextroof workflow.png)
+
 NextRoof is an innovative web platform that revolutionizes real estate valuation in Israel by utilizing Machine Learning. 
 Central to NextRoof is a dynamic recommendation engine, driven by sophisticated machine learning algorithms that seamlessly adjust to market trends. 
-Our system meticulously gathers the latest market data daily, processes it, and stores it in a cloud-based database. Users can effortlessly calculate up-to-date asset values using our calculator, reflecting the current market conditions, and explore the latest transactions directly on our website.
+Our system meticulously gathers the **latest market data daily**, processes it, and stores it in a cloud-based database. Users can effortlessly calculate up-to-date asset values using our calculator, reflecting the current market conditions, and explore the latest transactions directly on our website.
 This repository is home to the essential algorithm that powers NextRoof's core functionalities.
+
 
 **1. Data Collection** - Employed sophisticated methods for data extraction while evading blocks. This ensured rapid and clean data accumulation from multiple sources.
 
@@ -25,17 +28,12 @@ This repository is home to the essential algorithm that powers NextRoof's core f
 *Libreris*: Pandas, Numpy, Matplotlib,Sklearn, Sqlalchemy and Xgboost
 
 
- **models MAE and R2 scores*
+ **models MAE and R2 scores**
  ![plt1!](img/plot_model_scores.png)
 
  ![plt2!](img/result_plot.png)
 
  
-![heatmap!](img/heatmaptlv.png)
-
-
-![n_prices!](img/n_prices.png)
-
 
 **Requirements**
 To run this project, you will need:

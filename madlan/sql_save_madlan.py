@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 from dev import get_db_connection
+from tqdm import tqdm
+
 def add_new_deals_madlan_raw(df):
     new_row_count = 0
     updated_row_count = 0
@@ -137,7 +139,8 @@ def add_new_deals_madlan_rank(df,host_name='localhost'):
     conn = get_db_connection(db_name='nextroof_db', host_name=host_name)
     with conn:
         with conn.cursor() as cursor:
-            for _, row in df.iterrows():
+            for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Preparing  {host_name}"):
+
                 record = (
                     row['item_id'], row['lat'], row['long'], row['city'], row['home_number'], row['street'],
                     row['rooms'], row['neighborhood'], row['floor'], row['build_year'], row['size'], row['price'],
@@ -206,7 +209,7 @@ def add_new_deals_madlan_predict(df, host_name='localhost'):
 
     with conn:
         with conn.cursor() as cursor:
-            for _, row in df.iterrows():
+            for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Preparing  {host_name}"):
                 record = (row['item_id'], row['price'], row['predicted'], row['difference'])
                 cursor.execute("""
                     INSERT INTO madlan_predict (item_id, price, predicted, difference) 

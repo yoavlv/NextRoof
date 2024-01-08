@@ -79,14 +79,17 @@ def add_new_deals_nadlan_clean(df, host_name='localhost'):
             'conflict_rows':conflict_count,
         }
         return data
+
+from tqdm import tqdm
+
+
 def add_new_deals_nadlan_rank(df, host_name='localhost'):
     new_row_count = 0
     updated_row_count = 0
     conn = get_db_connection(db_name='nextroof_db', host_name=host_name)
-
     try:
         with conn.cursor() as cursor:
-            for _, row in df.iterrows():
+            for _, row in tqdm(df.iterrows(), total=len(df), desc="Preparing data"):
                 record = (
                     row['date'], row['type'], row['rooms'], row['floor'], row['size'], row['price'],
                     row['new'], row['build_year'], row['rebuilt'], row['floors'], row['key'],

@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
-import joblib
 from sklearn.metrics import r2_score, mean_absolute_error
 from .sql_reader_madlan import read_from_madlan_rank , read_model_scaler_from_db
 from .sql_save_madlan import add_new_deals_madlan_predict
@@ -86,7 +85,7 @@ def main_madlan_calc(city_obj):
         data = {}
         data['new_rows'] = 'Empty DataFrame'
         data['updated_rows'] = 'Empty DataFrame'
-        if data_calc['df']:
+        if not data_calc['df'].empty:
             data = add_new_deals_madlan_predict(data_calc['df'])
             data2 = add_new_deals_madlan_predict(data_calc['df'], '13.50.98.191')
 

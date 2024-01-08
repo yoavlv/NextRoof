@@ -16,7 +16,7 @@ def get_madlan_data(json_data, cookies, headers):
     adapter = HTTPAdapter(max_retries=retry)
     session.mount('https://', adapter)
     try:
-        response = session.post('https://www.madlan.co.il/api2', cookies=cookies, headers=headers, json=json_data)
+        response = session.post('https://www.madlan.co.il/api2', cookies=cookies, headers=headers, json=json_data, timeout=10)
         response.raise_for_status()
         responseJson = response.json()
     except requests.exceptions.RequestException as e:
@@ -24,14 +24,16 @@ def get_madlan_data(json_data, cookies, headers):
         return
 
     total = responseJson['data']['searchPoiV2']['total']
+    print(f"total {total}")
     offset_value = 0
     limit_value = 50
     extracted_data = []
 
     for _ in range(0, total, limit_value):
-        time.sleep(15)
+        print(_)
+        time.sleep(3)
         json_data['variables']['offset'] += offset_value
-        response = requests.post('https://www.madlan.co.il/api2', cookies=cookies, headers=headers, json=json_data)
+        response = requests.post('https://www.madlan.co.il/api2', cookies=cookies, headers=headers, json=json_data, timeout=10)
         try:
             responseJson = response.json()
             chunckJson = responseJson['data']['searchPoiV2']['poi']
@@ -89,7 +91,6 @@ def get_madlan_data(json_data, cookies, headers):
     df = df.dropna(subset=['Size'])
     df = df[df['Asset_type'].apply(lambda x: x in ['flat', 'gardenapartment', 'roofflat', 'building', 'studio'])]
 
-    print(f"scraping madaln shape {df.shape}")
     return df
 
 
@@ -97,6 +98,7 @@ def madlan_scrape():
     status = {}
     try:
         df_madlan = get_madlan_data(json_data, cookies, headers)
+        print(f"madlan_scrape shape {df_madlan.shape}")
         if not df_madlan.empty:
             data = add_new_deals_madlan_raw(df_madlan)
             status['success'] = True

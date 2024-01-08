@@ -29,6 +29,6 @@ def clean_old_ads(headers_delete):
         if len(to_delete) >= 1:
             delete_records_by_item_ids(item_ids=to_delete, db_name='nextroof_db')
             delete_records_by_item_ids(item_ids=to_delete, db_name='nadlan_db')
-            delete_records_by_item_ids(item_ids=to_delete, db_name='nadlan_db', host_name='13.50.98.191')
+            delete_records_by_item_ids(item_ids=to_delete, db_name='nextroof_db', host_name='13.50.98.191')
     except Exception as e:
         print(e)

@@ -58,6 +58,17 @@ def read_from_nadlan_rank(city):
     df.loc[:, 'helka'] = df['helka'].astype(float).astype(np.int32)
     return df
 
+def read_from_nadlan_rank_find_floor(city, street, home_number):
+    home_number = str(home_number).strip()
+    city = str(city).strip()
+    street = str(street).strip()
+    engine = get_db_engine(db_name='nextroof_db')
+    query = text(f"SELECT floors FROM nadlan_rank WHERE city = '{city}' AND street = '{street}' AND home_number = '{home_number}' ORDER BY floors DESC LIMIT 1;")
+    with engine.connect() as connection:
+        result = connection.execute(query)
+        row = result.fetchone()
+        return row[0] if row else np.nan
+
 def read_from_nadlan_clean(city):
     engine = get_db_engine(db_name='nextroof_db')
     query = "SELECT * FROM nadlan_clean WHERE city = %s"

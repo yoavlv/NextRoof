@@ -2,7 +2,13 @@ from .sql_save_nadlan import add_new_deals_nadlan_rank
 from .sql_reader_nadlan import read_from_nadlan_clean
 import numpy as np
 import datetime
+from dateutil.relativedelta import relativedelta
 import traceback
+
+CURRENT_DATE = datetime.datetime.now()
+THREE_MONTHS_EARLIER = CURRENT_DATE - relativedelta(months=3)
+
+
 
 def create_street_and_neighborhood_rank(df, column):
     '''
@@ -50,7 +56,7 @@ def create_street_and_neighborhood_rank(df, column):
 
 def change_by_years(df):
     years = df['year'].unique()
-    today = df[df['year'] == 2023]
+    today = df[df['year'] == THREE_MONTHS_EARLIER.year]
     avg_today = today['price'].sum() / today['size'].sum()
     change = {}
     for year in years:
@@ -67,7 +73,7 @@ def create_parcel_rank(df):
     '''
     #     df = df.drop_duplicates(subset=['Price', 'Date'])
     # Note : if the max year in the df != today year the calc will not work...
-    df = df[(df['year'] <= datetime.datetime.now().year)]
+    df = df[(df['year'] <= THREE_MONTHS_EARLIER.year)]
 
     parcel_rank = {}
 
@@ -102,7 +108,6 @@ def create_parcel_rank(df):
     df.drop(columns=['gush_helka'], inplace=True)
 
     return df
-
 def main_nadlan_rank(city):
     nadlan_rank_status = {}
     try:
@@ -111,8 +116,7 @@ def main_nadlan_rank(city):
         df = create_street_and_neighborhood_rank(df, 'street')
         df = create_parcel_rank(df)
         data = add_new_deals_nadlan_rank(df)
-        data2 = add_new_deals_nadlan_rank(df, '13.50.98.191')
-
+        # data2 = add_new_deals_nadlan_rank(df, '13.50.98.191')
         nadlan_rank_status['success'] = True
         nadlan_rank_status['new_rows'] = data['new_rows']
         nadlan_rank_status['updated_rows'] = data['updated_rows']
