@@ -1,10 +1,13 @@
 import pandas as pd
 import numpy as np
-from dev import get_db_engine
+
 from sqlalchemy import text
 import sqlalchemy
 
-
+try:
+    from ..dev import get_db_connection
+except:
+    get_db_engine = None
 
 def read_from_population(population_size=10000):
     engine = get_db_engine(db_name='nextroof_db')

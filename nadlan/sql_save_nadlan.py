@@ -1,4 +1,7 @@
-from dev import get_db_connection
+try:
+    from ..dev import get_db_connection
+except:
+    get_db_engine = None
 
 def add_new_deals_nadlan_raw(df):
     conflict_count = 0
