@@ -7,10 +7,10 @@ import os
 
 @pytest.fixture
 def input_data():
-    project_root = os.path.dirname(os.path.dirname(__file__))  # Adjust as necessary
-    csv_path = os.path.join(project_root, 'nadlan_data.csv')
+    project_root = os.path.dirname(os.path.dirname(__file__))
+    csv_path = os.path.join(project_root, 'tests', 'nadlan_data.csv')
     try:
-        from dev import get_db_engine  # Consider adjusting this import
+        from dev import get_db_engine
         engine = get_db_engine(db_name='nadlan_db',)
         query = "SELECT * FROM nadlan_raw LIMIT 100"
         df = pd.read_sql_query(query, engine)
