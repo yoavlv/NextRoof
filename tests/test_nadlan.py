@@ -2,18 +2,15 @@ import pytest
 import pandas as pd
 from nadlan.nadlan_clean import rename_cols_update_data_types , pre_process ,floor_to_numeric , floors
 import numpy as np
-
+from dev import get_db_engine
 
 
 @pytest.fixture
 def input_data():
-    try:
-        from ..dev import get_db_engine
-        engine = get_db_engine(db_name='nadlan_db',)
-        query = "SELECT * FROM nadlan_raw LIMIT 100"
-        df = pd.read_sql_query(query, engine)
-    except:
-        df = pd.read_csv('nadlan_data.csv',index_col=0)
+    engine = get_db_engine(db_name='nadlan_db',)
+    query = "SELECT * FROM nadlan_raw LIMIT 100"
+    df = pd.read_sql_query(query, engine)
+
     return df
 
 def test_pre_process(input_data):
