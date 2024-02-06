@@ -9,7 +9,7 @@ import numpy as np
 df_cache = None
 logging.basicConfig(level=logging.WARNING)
 from backoff import on_exception, expo
-from dev import get_db_connection
+from ..dev import get_db_connection
 
 city_dict = {
     'אשדוד': 1100,
