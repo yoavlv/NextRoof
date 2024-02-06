@@ -38,7 +38,7 @@ def rename_cols_update_data_types(df):
         np.int32)
 
     df['street'] = df['fulladress'].str.split(',', n=2, expand=True)[0].str.strip()
-    df['street'] = df['street'].str.replace('\d+', '', regex=True).str.strip()
+    df['street'] = df['street'].str.replace(r'\d+', '', regex=True).str.strip()
     df = df[df['street'].str.len() > 2]
 
     # Drop unnecessary columns and rows
