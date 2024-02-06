@@ -1,12 +1,12 @@
 import sys
 sys.path.append('/nadlan')
-from .nadlan_utils import payload ,city_code
+from .nadlan_utils import payload, city_code
 import time
 import concurrent.futures
 import pandas as pd
 import httpx
 from .sql_save_nadlan import add_new_deals_nadlan_raw
-from .sql_reader_nadlan import read_raw_data_table_by_gush
+from .sql_reader_nadlan import read_raw_data_table_by_gush , read_from_population
 import logging
 logging.basicConfig(level=logging.WARNING)
 import traceback
@@ -61,6 +61,7 @@ def get_city_data(payload,city_code,num_of_pages=5):
 
 def main_loop(city_code_dict, payload, num_of_pages):
     df = pd.DataFrame()
+
     for city, city_code in city_code_dict.items():
         new_df = get_city_data(payload, city_code, num_of_pages=num_of_pages)
         if 'FULLADRESS' in new_df.columns:
@@ -76,7 +77,7 @@ def main_loop(city_code_dict, payload, num_of_pages):
         df.drop_duplicates(inplace=True)
     return df
 
-def run_nadlan_scrape(num_of_pages = 20 ,threads = 10 ):
+def run_nadlan_scrape(num_of_pages = 20 ,threads = 10):
     nadlan_scrape_status = {}
     try:
         nadlan_df = main_loop(city_code, payload , num_of_pages = num_of_pages)

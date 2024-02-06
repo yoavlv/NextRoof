@@ -1,12 +1,8 @@
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 import sys
 import re
 sys.path.append('C:/Users/yoavl/NextRoof/')
 import pandas as pd
-import psycopg2
-import logging
 import time
 import numpy as np
 import logging

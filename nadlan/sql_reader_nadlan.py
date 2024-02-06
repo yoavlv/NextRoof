@@ -2,7 +2,29 @@ import pandas as pd
 import numpy as np
 from dev import get_db_engine
 from sqlalchemy import text
+import sqlalchemy
 
+
+
+def read_from_population(population_size=10000):
+    engine = get_db_engine(db_name='nextroof_db')
+    city_dict = {}
+
+    try:
+        with engine.connect() as conn:
+            query = text("select city_id, city_name from population where total > :size order by total desc;")
+            result = conn.execute(query, {'size': population_size}).fetchall()
+
+            for row in result:
+                city_id, city_name = row
+                city_dict[city_name] = city_id
+
+    except sqlalchemy.exc.SQLAlchemyError as e:
+        # Handle the exception here (e.g., log the error, raise a custom exception)
+        print(f"Error during database operation: {e}")
+        city_dict = {}  # Return an empty dictionary when an error occurs
+
+    return city_dict
 
 def read_raw_data_table_by_gush(gush, num_of_rows=1):
     engine = get_db_engine()
@@ -21,28 +43,15 @@ def read_raw_data_table(num_of_rows=100, city=None):
         else:
             query = "SELECT * FROM nadlan_raw ORDER BY created_at DESC LIMIT %s"
             df = pd.read_sql_query(query, engine, params=(num_of_rows,))
-
-        df.columns = [col.upper() for col in df.columns]
         df_clean = read_key_from_nadlan_clean(get_db_engine(db_name='nextroof_db'))
         keys_to_remove = df_clean['key'].unique()
-        df = df[~df['KEYVALUE'].isin(keys_to_remove)]
-
-        for col in df.columns:
-            df[col] = df[col].replace('NaN', np.nan).replace('', np.nan)  # Replace 'NaN' strings with np.nan
-
-        df = convert_data_types(df)
-
+        df = df[~df['keyvalue'].isin(keys_to_remove)]
         return df
+
     except Exception as e:
         print(f"Error: {e}")
         return None
 
-def convert_data_types(df):
-    float_columns = ['ASSETROOMNUM', 'DEALNATURE', 'NEWPROJECTTEXT', 'BUILDINGYEAR', 'YEARBUILT', 'BUILDINGFLOORS', 'TYPE']
-    for col in float_columns:
-        if col in df.columns:
-            df[col] = df[col].astype(float)
-    return df
 
 def read_key_from_nadlan_clean(engine):
     return pd.read_sql_query("SELECT key FROM nadlan_clean", engine)

@@ -15,6 +15,10 @@ def madlan_main(city_dict,clean = False):
     madlan_status['status_clean'] = {}
     madlan_status['status_rank'] = {}
     madlan_status['status_calc'] = {}
+
+    if madlan_status['status_scrape']['success'] == False:
+        return madlan_status
+
     for city in city_dict.items():
         print(f"madlan_main:{city[0]}")
         madlan_status['status_clean'][city[0]] = main_madlan_clean(city[0])

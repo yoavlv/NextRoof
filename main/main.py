@@ -5,8 +5,8 @@ from madlan.madlan_main import madlan_main
 sys.path.append('/nadlan')
 from nadlan.nadlan_main import nadlan_main
 import ssl
-sys.path.append('/Algorithms')
-from Algorithms.model import train_model_main
+sys.path.append('/algorithms')
+from algorithms.model import train_model_main
 sys.path.append('/sql')
 from dev import password
 from email.message import EmailMessage
@@ -20,7 +20,7 @@ def send_daily_status(data):
     email_sender = 'yoavlv12@gmail.com'
     email_pass = password
     email_receiver = 'yoavlv12@gmail.com'
-    subject = "test mail"
+    subject = "Daily Status NextRoof Workflow"
     em = EmailMessage()
     em.set_content(formatted_data, subtype='plain')
     em['From'] = email_sender
@@ -36,25 +36,24 @@ def run_new(train=True, clean=False, maintenance=False):
     run_status = {}
     current_time = datetime.datetime.now()
     run_status['date'] = current_time.strftime("%Y-%m-%d %H:%M")
-    #
-    # start_time = time.time()
-    # run_status['nadlan_main'] = nadlan_main(city_dict, num_of_pages=2, maintenance=maintenance)
-    # nadlan_main_time = time.time() - start_time
-    # run_status['nadlan_main_time'] = f"{nadlan_main_time:.2f} seconds"
-    #
-    # run_status['train_model'] = False
-    # if train:
-    #     start_time = time.time()
-    #     run_status['train_model'] = train_model_main(city_dict)
-    #     train_model_time = time.time() - start_time
-    #     run_status['train_model_time'] = f"{train_model_time:.1f} seconds"
+
+    start_time = time.time()
+    run_status['nadlan_main'] = nadlan_main(city_dict, num_of_pages=200, maintenance=maintenance)
+    nadlan_main_time = time.time() - start_time
+    run_status['nadlan_main_time'] = f"{nadlan_main_time:.2f} seconds"
+
+    run_status['train_model'] = False
+    if train:
+        start_time = time.time()
+        run_status['train_model'] = train_model_main(city_dict)
+        train_model_time = time.time() - start_time
+        run_status['train_model_time'] = f"{train_model_time:.1f} seconds"
 
     start_time = time.time()
     run_status['madlan_main'] = madlan_main(city_dict, clean)
     madlan_main_time = time.time() - start_time
     run_status['madlan_main_time'] = f"{madlan_main_time:.1f} seconds"
 
-    # Sending daily status
     try:
         send_daily_status(run_status)
     except Exception as e:

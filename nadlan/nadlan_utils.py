@@ -36,23 +36,15 @@ def split_address(address):
     try:
         # Adjusted regular expression to capture the first number in the address
         match = re.match(r'([\u0590-\u05FF\'"׳״\-\s]+)\s(\d+).*?,\s*([\u0590-\u05FF\s-]+)', address)
+
         if not match:
             raise ValueError(f"Invalid address format: {address}")
 
         street, home_number, city = match.groups()
         return {'street': street.strip(), 'home_number': home_number, 'city': city.strip()}
     except Exception as e:
-        raise Exception(f"Error parsing address: {e}")
+        raise ValueError(f"Error parsing address: {e}")
 
-def fetch_all_for_city(city):
-    global df_cache
-    conn = get_db_connection(db_name='nextroof_db')
-    with conn.cursor() as cur:
-        cur.execute("SELECT * FROM addr_cache WHERE city = %s", (city,))
-        records = cur.fetchall()
-        columns = ['addr_key', "key", "city", "neighborhood", "street", "home_number", "lat", "long", "type", 'x', 'y',
-                   'zip', 'created_at', 'gush', 'helka', 'build_year', 'floors']
-        df_cache = pd.DataFrame(records, columns=columns)
 
 
 def fetch_all_cache_data():
@@ -64,8 +56,6 @@ def fetch_all_cache_data():
         columns = ['addr_key', "key", "city", "neighborhood", "street", "home_number", "lat", "long", "type", 'x', 'y',
                    'zip', 'created_at', 'gush', 'helka', 'build_year', 'floors']
         df_cache = pd.DataFrame(records, columns=columns)
-
-
 
 
 def fetch_from_df(cache_key):
@@ -159,12 +149,12 @@ def nominatim_api(city, street, gush, helka, build_year, floors, home_number=Non
     return False
 
 
-@on_exception(expo, requests.HTTPError, max_tries=3)
+@on_exception(expo, httpx.HTTPError, max_tries=3)
 def govmap_addr(addr):
     link = f"https://es.govmap.gov.il/TldSearch/api/DetailsByQuery?query={addr}&lyrs=276267023&gid=govmap"
 
     try:
-        response = requests.get(link, timeout=30)
+        response = httpx.get(link, timeout=30)
         response.raise_for_status()
 
         json_obj = response.json()
@@ -181,16 +171,15 @@ def govmap_addr(addr):
             }
             return result
 
-    except requests.HTTPError as e:
+    except httpx.HTTPError as e:
         print(f"HTTP error occurred: {e}")
-        raise
+
     except Exception as e:
         print(f"An error occurred with GovMap API: {e}")
-
     return {'success': False}
 
 @on_exception(expo, httpx.HTTPError, max_tries=3)
-def nominatim_addr(query):
+def nominatim_addr(query, client=None):
     base_url = "https://nominatim.openstreetmap.org/search"
     params = {
         'q': query,
@@ -206,27 +195,38 @@ def nominatim_addr(query):
         'success': False,
     }
 
-
-    with httpx.Client(timeout=30) as client:
+    if client is None:
+        with httpx.Client(timeout=30) as client:
+            response = client.get(base_url, params=params)
+    else:
         response = client.get(base_url, params=params)
-        response.raise_for_status()
 
+    if response.status_code != 200:
+        raise httpx.HTTPStatusError("An error occurred.", request=response.request, response=response)
+
+    response.raise_for_status()
+
+    try:
         data = response.json()
-        if data:
-            address = data[0].get('address', {})
-            result = {
-                "city": address.get("city", ""),
-                "neighborhood": address.get("suburb") or address.get("neighborhood", ""),
-                "street": address.get("road", ""),
-                "zip": address.get("postcode", ""),
-                "type": data[0].get("type", ""),
-                "lat": round(float(data[0].get("lat", "0")), 5),
-                "long": round(float(data[0].get("lon", "0")), 5),
-                'success': True,
-            }
-            return result
+        address = data[0].get('address', {})
+    except Exception:
+        print(f"Invalid JSON Query")
+        return result
+
+
+    result.update({
+        "city": address.get("city", ""),
+        "neighborhood": address.get("suburb") or address.get("neighborhood", ""),
+        "street": address.get("road", ""),
+        "zip": address.get("postcode", ""),
+        "type": data[0].get("type", ""),
+        "lat": round(float(data[0].get("lat", "0")), 5),
+        "long": round(float(data[0].get("lon", "0")), 5),
+        'success': True,
+    })
 
     return result
+
 
 
 def calc_distance(df, x2, y2):

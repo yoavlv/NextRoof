@@ -42,18 +42,18 @@ def add_new_deals_nadlan_raw(df):
 def add_new_deals_nadlan_clean(df, host_name='localhost'):
     conflict_count = 0
     new_row_count = 0
-    df = df.dropna(subset=['Street'])
+    df = df.dropna(subset=['street'])
     conn = get_db_connection(db_name='nextroof_db', host_name=host_name)
 
     with conn:
         with conn.cursor() as cursor:
             for _, row in df.iterrows():
                 record = (
-                    row['Date'], row['Type'], row['Rooms'], row['Floor'], row['Size'], row['Price'],
-                    row['New'], row['Build_year'], row['Rebuilt'], row['Floors'], row['Key'],
-                    row['City'], row['Year'], row['Gush'], row['Helka'], row['Tat'],
-                    row['Home_number'], row['Street'], row['Neighborhood'], row['Lat'], row['Long'],
-                    row['X'], row['Y'], row['Zip'],row['Addr_key']
+                    row['date'], row['type'], row['rooms'], row['floor'], row['size'], row['price'],
+                    row['new'], row['build_year'], row['rebuilt'], row['floors'], row['key'],
+                    row['city'], row['year'], row['gush'], row['helka'], row['tat'],
+                    row['home_number'], row['street'], row['neighborhood'], row['lat'], row['long'],
+                    row['x'], row['y'], row['zip'], row['addr_key']
                 )
                 cursor.execute("""
                     INSERT INTO nadlan_clean (

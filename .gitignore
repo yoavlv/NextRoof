@@ -2,17 +2,17 @@
 *.json
 *.pkl
 Algorithms/*.pkl
-Algorithms/models
-Algorithms/catboost_info
-Algorithms/.ipynb_checkpoints
-Algorithms/linear_regression_tuning.ipynb
+algorithms/models
+algorithms/catboost_info
+algorithms/.ipynb_checkpoints
+algorithms/linear_regression_tuning.ipynb
 main/catboost_info
 Clean/sql_functions.py
 /catboost_info
 Data/*.csv
 /venv
 /ranking.ipynb
-/Scraping
+/scraping
 /.ipynb_checkpoints
 
 /__pycache__
@@ -31,3 +31,4 @@ data_cleaning_nadlan.ipynb
 data_cleaning_madlan.ipynb
 data_cleaning_yad2.ipynb
 dev.py
+*.ipynb

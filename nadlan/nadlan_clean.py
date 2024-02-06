@@ -1,17 +1,36 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
-from utils.nadlan_utils import nominatim_api
-from .nadlan_utils import complete_neighborhood
-from sql_reader_nadlan import read_raw_data_table ,read_from_nadlan_clean,distinct_city_list , read_from_nadlan_rank_find_floor
-from sql_save_nadlan import add_new_deals_nadlan_clean , add_new_deals_nadlan_clean_neighborhood_complete
+from .nadlan_utils import nominatim_api ,complete_neighborhood
+from .sql_reader_nadlan import read_raw_data_table ,read_from_nadlan_clean,distinct_city_list , read_from_nadlan_rank_find_floor
+from .sql_save_nadlan import add_new_deals_nadlan_clean , add_new_deals_nadlan_clean_neighborhood_complete
 from tqdm import tqdm
 import traceback
 import logging
 logging.basicConfig(level=logging.WARNING)
 
+def convert_data_types(df):
+    try:
+        df.columns = df.columns.str.lower()
+        float_columns = ['assetroomnum', 'dealnature', 'newprojecttext', 'buildingyear', 'yearbuilt', 'buildingfloors','type']
+        for col in float_columns:
+            if col in df.columns:
+                df[col] = df[col].astype(float)
+    except Exception as e:
+        print(f"An error occurred while converting data types: {e}")
+    return df
+
+def pre_process(df):
+    try:
+        for col in df.columns:
+            df[col] = df[col].replace('NaN', np.nan).replace('', np.nan).replace('None', np.nan)
+        df = convert_data_types(df)
+    except Exception as e:
+        print(f"An error occurred during data pre-processing: {e}")
+    return df
 
 def rename_cols_update_data_types(df):
+    df = pre_process(df)
     # Extract and clean the city name
     df['city'] = df['fulladress'].str.split(',', n=2, expand=True)[1].str.strip()
     df['city'] = df['city'].apply(lambda x: '-'.join([word.strip() for word in x.split('-')]) if '-' in x else x)
@@ -24,7 +43,7 @@ def rename_cols_update_data_types(df):
 
     # Drop unnecessary columns and rows
     columns_to_drop = ["projectname", 'polygon_id', 'type', 'displayadress']
-    df.drop(columns=columns_to_drop, inplace=True)
+    df = df.drop(columns=columns_to_drop)
     df = df.dropna(subset=['dealamount', 'city', 'dealnature', 'dealnaturedescription']).reset_index(drop=True)
 
     unwanted_types = [
@@ -55,7 +74,8 @@ def rename_cols_update_data_types(df):
 
     # Data Cleaning and Transformation
     df['build_year'] = np.where(df['rebuilt'].isna(), df['build_year'], df['rebuilt'])
-    df['new'] = df['new'].fillna(0).astype(float).astype(int)
+
+    df['new'] = pd.to_numeric(df['new'], errors='coerce').fillna(0).astype(int)
 
     df.loc[df['rooms'].isna(), 'rooms'] = (df['size'] / 30).round()
     df = df[df['size'] > 24]
@@ -66,8 +86,9 @@ def rename_cols_update_data_types(df):
     df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
     df['year'] = df['date'].dt.year.astype(np.int32)
     df[['gush', 'helka', 'tat']] = df['gush'].str.split('-|/', n=2, expand=True).astype(np.int32)
-    df = df.drop(columns=['gush', 'fulladress'], axis=1)
-    df = df.dropna(subset=['price', 'size', 'type', ]).reset_index(drop=True)
+    df = df.drop(columns=['fulladress'], axis=1)
+    df = df.dropna(subset=['price', 'size', 'type']).reset_index(drop=True)
+
     return df
 
 
@@ -92,16 +113,11 @@ def floor_to_numeric(df, floors):
     # Apply conversion to each row
     df['floor'] = df['floor'].apply(match_floor_name)
 
-    # Optional: Display stats
-    not_found_count = df['floor'].isna().sum()
-    found_count = len(df) - not_found_count
     df = df.dropna(subset= 'floor')
     df['floor'] = df['floor'].astype(np.int32)
-    print(f'Total not found: {not_found_count}')
-    print(f'Total found: {found_count}')
     return df
 
-tqdm.pandas()
+tqdm.pandas(desc="Enriching location Data")
 def enrich_df_with_location_data(df):
     df['details'] = df.progress_apply(lambda row: nominatim_api(row['city'], row['street'], row['gush'],
                                                                row['helka'], row['build_year'], row['floors'], row['home_number']), axis=1)
@@ -126,11 +142,11 @@ def find_missing_floors(df):
             return row['floors']
 
     df['floors'] = df.apply(update_floor, axis=1)
-    df['floors'] = np.where(df['floor'] > df['floors'], df['floor'], df['floors'])
     df = df.dropna(subset=['floors'])
+    df = df[df['floors'].apply(lambda x: isinstance(x, (int, np.integer)) or (isinstance(x, float) and x.is_integer()))]
     df['floors'] = df['floors'].astype(np.int32)
+    df['floors'] = np.where(df['floor'] > df['floors'], df['floor'], df['floors'])
     return df
-
 
 
 def clean_outliers(df):
@@ -185,7 +201,6 @@ def run_nadlan_clean(maintenance=False, overhead= False):
         data = add_new_deals_nadlan_clean(df)
         data2 = add_new_deals_nadlan_clean(df,'13.50.98.191')
         if maintenance:
-            find_missing_floors
             maintenance_neighborhood('nadlan_clean')
         nadlan_clean_status['success'] = True
         nadlan_clean_status['new_rows'] = data['new_rows']
