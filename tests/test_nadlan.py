@@ -1,7 +1,14 @@
+import sys
+import os
+current_dir = os.path.dirname(__file__)
+project_root = os.path.abspath(os.path.join(current_dir, '..'))
+sys.path.insert(0, project_root)
+
 import pytest
 import pandas as pd
 from nadlan.nadlan_clean import rename_cols_update_data_types , pre_process ,floor_to_numeric , floors
 import numpy as np
+
 from ..dev import get_db_engine
 
 @pytest.fixture
