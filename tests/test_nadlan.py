@@ -2,21 +2,18 @@ import pytest
 import pandas as pd
 from nadlan.nadlan_clean import rename_cols_update_data_types , pre_process ,floor_to_numeric , floors
 import numpy as np
-import os
+
 
 
 @pytest.fixture
 def input_data():
-    project_root = os.path.dirname(os.path.dirname(__file__))
-    csv_path = os.path.join(project_root, 'tests', 'nadlan_data.csv')
     try:
-        from dev import get_db_engine
+        from ..dev import get_db_engine
         engine = get_db_engine(db_name='nadlan_db',)
         query = "SELECT * FROM nadlan_raw LIMIT 100"
         df = pd.read_sql_query(query, engine)
-    except Exception as e:
-        print(f"Failed to load from database, falling back to CSV: {e}")
-        df = pd.read_csv(csv_path, index_col=0)
+    except:
+        df = pd.read_csv('nadlan_data.csv',index_col=0)
     return df
 
 def test_pre_process(input_data):
