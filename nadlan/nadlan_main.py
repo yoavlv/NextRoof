@@ -1,23 +1,45 @@
 from .nadlan_scrape import run_nadlan_scrape
 from .nadlan_clean import run_nadlan_clean
 from .nadlan_rank import main_nadlan_rank
-import time
+import threading
 
-
-def nadlan_main(city_dict, num_of_pages=20, maintenance=False, rank = False):
-    nadlan_status = {}
+def nadlan_main(city_dict, params):
+    nadlan_status = {'status_scrape': None, 'status_clean': {}, 'status_rank': {}}
     print("nadlan_main_START")
-    nadlan_status['status_scrape'] = run_nadlan_scrape(num_of_pages)
-    nadlan_status['status_clean'] = run_nadlan_clean(maintenance=maintenance)
-    nadlan_status['status_rank'] = {}
-    if rank:
-        print("start ranking...........")
-        for city in city_dict.keys():
-            print(f"ranking nadlan: {city}")
-            start_time = time.time()
-            nadlan_status['status_rank'][city] = main_nadlan_rank(city)
-            end_time = time.time()
-            print(f"finish: main_nadlan_rank for {city}, Runtime: {end_time - start_time:.1f} seconds")
 
-    print("nadlan_main_FINISH")
+    # Scrape data
+    nadlan_status['status_scrape'] = run_nadlan_scrape(city_dict, params['num_of_pages'])
+
+    # Define a thread-safe operation for updating status
+    def update_status(status_key, city, result):
+        with threading.Lock():
+            nadlan_status[status_key][city] = result
+
+    # Clean data
+    def clean_data(city_id, city):
+        result = run_nadlan_clean(city_id=city_id, city=city)
+        update_status('status_clean', city, result)
+
+    # Rank data
+    def rank_data(city_id, city):
+        result = main_nadlan_rank(city_id=city_id, city=city)
+        update_status('status_rank', city, result)
+
+    # Run clean or rank tasks in threads
+    def run_task_in_threads(task, task_name):
+        print(f"Starting {task_name}...")
+        threads = [threading.Thread(target=task, args=(city_id, city)) for city_id, city in city_dict.items()]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+
+
+    run_task_in_threads(clean_data, "cleaning")
+
+    if params['rank']:
+        run_task_in_threads(rank_data, "ranking")
+
+    print("(nadlan_main) FINISH")
     return nadlan_status

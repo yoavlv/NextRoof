@@ -1,96 +1,31 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
-from .nadlan_utils import nominatim_api ,complete_neighborhood
-from .sql_reader_nadlan import read_raw_data_table ,read_from_nadlan_clean,distinct_city_list , read_from_nadlan_rank_find_floor
-from .sql_save_nadlan import add_new_deals_nadlan_clean , add_new_deals_nadlan_clean_neighborhood_complete
+from .nadlan_utils import nominatim_api, complete_neighborhood
+from .sql_reader_nadlan import read_raw_data_table, read_from_nadlan_clean, distinct_city_list\
+    , read_from_nadlan_rank_find_floor, fetch_all_cache_data_by_city
+from utils.base import add_id_columns
+from .sql_save_nadlan import add_new_deals_nadlan_clean, add_new_deals_nadlan_clean_neighborhood_complete
 from tqdm import tqdm
 import traceback
-import logging
-logging.basicConfig(level=logging.WARNING)
+from utils.utils_sql import DatabaseManager
 
-def convert_data_types(df):
-    try:
-        df.columns = df.columns.str.lower()
-        float_columns = ['assetroomnum', 'dealnature', 'newprojecttext', 'buildingyear', 'yearbuilt', 'buildingfloors','type']
-        for col in float_columns:
-            if col in df.columns:
-                df[col] = df[col].astype(float)
-    except Exception as e:
-        print(f"An error occurred while converting data types: {e}")
-    return df
 
-def pre_process(df):
-    try:
-        for col in df.columns:
-            df[col] = df[col].replace('NaN', np.nan).replace('', np.nan).replace('None', np.nan)
-        df = convert_data_types(df)
-    except Exception as e:
-        print(f"An error occurred during data pre-processing: {e}")
-    return df
 
-def rename_cols_update_data_types(df):
-    df = pre_process(df)
-    # Extract and clean the city name
-    df['city'] = df['fulladress'].str.split(',', n=2, expand=True)[1].str.strip()
-    df['city'] = df['city'].apply(lambda x: '-'.join([word.strip() for word in x.split('-')]) if '-' in x else x)
-    df['home_number'] = pd.to_numeric(df['fulladress'].str.extract('([0-9]+)', expand=False), errors='coerce').astype(
-        np.int32)
-
-    df['street'] = df['fulladress'].str.split(',', n=2, expand=True)[0].str.strip()
-    df['street'] = df['street'].str.replace(r'\d+', '', regex=True).str.strip()
-    df = df[df['street'].str.len() > 2]
-
-    # Drop unnecessary columns and rows
-    columns_to_drop = ["projectname", 'polygon_id', 'type', 'displayadress']
-    df = df.drop(columns=columns_to_drop)
-    df = df.dropna(subset=['dealamount', 'city', 'dealnature', 'dealnaturedescription']).reset_index(drop=True)
-
-    unwanted_types = [
-        "nan", "מיני פנטהאוז", "מגורים", "בית בודד", "דופלקס", "קוטג' חד משפחתי", "קוטג' דו משפחתי",
-        'מלונאות', 'חנות', 'קרקע למגורים', 'קבוצת רכישה - קרקע מגורים', 'None', 'אופציה',
-        'קבוצת רכישה - קרקע מסחרי', 'חניה', 'מסחרי + מגורים', 'דירת נופש', 'דיור מוגן', 'קומבינציה', 'מבנים חקלאיים',
-        'תעשיה', 'מסחרי + משרדים', 'בניני ציבור', 'חלוקה/יחוד דירות', 'מחסנים', 'אחר', 'בית אבות', 'עסק',
-        "קוטג' טורי", 'ניוד זכויות בניה', 'משרד', 'ללא תיכנון', 'מלונאות ונופש', 'משרדים + מגורים', 'מלאכה'
-    ]
-    df = df[~df['dealnaturedescription'].isin(unwanted_types)].reset_index(drop=True)
-
-    # Rename columns
-    column_mapping = {
-        'dealamount': 'price',
-        'dealnature': 'size',
-        'dealnaturedescription': 'type',
-        'assetroomnum': 'rooms',
-        'newprojecttext': 'new',
-        'buildingfloors': 'floors',
-        'buildingyear': 'build_year',
-        'yearbuilt': 'rebuilt',
-        'dealdate': 'date',
-        'floorno': 'floor',
-        'keyvalue': 'key',
-
-    }
-    df.rename(columns=column_mapping, inplace=True)
-
-    # Data Cleaning and Transformation
-    df['build_year'] = np.where(df['rebuilt'].isna(), df['build_year'], df['rebuilt'])
-
-    df['new'] = pd.to_numeric(df['new'], errors='coerce').fillna(0).astype(int)
-
-    df.loc[df['rooms'].isna(), 'rooms'] = (df['size'] / 30).round()
-    df = df[df['size'] > 24]
-    df['price'] = df['price'].str.replace(',', '').astype(np.int32)
-    df['build_year'] = df['build_year'].fillna('0').astype(np.int32)
-    df['rebuilt'] = df['rebuilt'].fillna('0').astype(np.int32)
-
-    df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
-    df['year'] = df['date'].dt.year.astype(np.int32)
-    df[['gush', 'helka', 'tat']] = df['gush'].str.split('-|/', n=2, expand=True).astype(np.int32)
-    df = df.drop(columns=['fulladress'], axis=1)
-    df = df.dropna(subset=['price', 'size', 'type']).reset_index(drop=True)
-
-    return df
-
+# def main_add_street_id(df):
+#     city_ids = df['city_id'].unique()
+#     result_df = pd.DataFrame()
+#     for city_id in city_ids:
+#         df_temp = df[df['city_id'] == city_id]
+#         st_df_temp = st_df[st_df['city_id'] == city_id]
+#         merged_df = add_street_id(df_temp, st_df_temp)
+#
+#         result_df = pd.concat([result_df, merged_df], ignore_index=True)
+#
+#     result_df = result_df.dropna(subset=['street_id'])
+#     result_df.loc[:, 'street_id'] = result_df.loc[:, 'street_id'].astype(np.int32)
+#
+#     return result_df.drop(columns=['city_id_st', 'city_st'])
 
 floors = {-1: 'מרתף', 0: 'קרקע', 1: 'ראשונה', 2: 'שניה', 3: 'שלישית', 4: 'רביעית', 5: 'חמישית', 6: 'שישית', 7: 'שביעית', 8: 'שמינית', 9: 'תשיעית', 10: 'עשירית', 11: 'אחת עשרה', 12: 'שתים עשרה', 13: 'שלוש עשרה', 14: 'ארבע עשרה', 15: 'חמש עשרה', 16: 'שש עשרה', 17: 'שבע עשרה', 18: 'שמונה עשרה', 19: 'תשע עשרה', 20: 'עשרים', 21: 'עשרים ואחת', 22: 'עשרים ושתים', 23: 'עשרים ושלוש', 24: 'עשרים וארבע', 25: 'עשרים וחמש', 26: 'עשרים ושש', 27: 'עשרים ושבע', 28: 'עשרים ושמונה', 29: 'עשרים ותשע', 30: 'שלושים', 31: 'שלושים ואחת', 32: 'שלושים ושתים', 33: 'שלושים ושלוש', 34: 'שלושים וארבע', 35: 'שלושים וחמש', 36: 'שלושים ושש', 37: 'שלושים ושבע', 38: 'שלושים ושמונה', 39: 'שלושים ותשע', 40: 'ארבעים'}
 
@@ -117,21 +52,21 @@ def floor_to_numeric(df, floors):
     df['floor'] = df['floor'].astype(np.int32)
     return df
 
-tqdm.pandas(desc="Enriching location Data")
-def enrich_df_with_location_data(df):
-    df['details'] = df.progress_apply(lambda row: nominatim_api(row['city'], row['street'], row['gush'],
-                                                               row['helka'], row['build_year'], row['floors'], row['home_number']), axis=1)
-    df['neighborhood'] = df['details'].apply(lambda x: x.get('neighborhood', '') if x else np.nan)
-    df['lat'] = df['details'].apply(lambda x: x.get('lat', '') if x else np.nan)
-    df['long'] = df['details'].apply(lambda x: x.get('long', '') if x else np.nan)
-    df['x'] = df['details'].apply(lambda x: x.get('x', '') if x else np.nan)
-    df['y'] = df['details'].apply(lambda x: x.get('y', '') if x else np.nan)
-    df['zip'] = df['details'].apply(lambda x: x.get('zip', '') if x else np.nan)
-    df['street'] = df['details'].apply(lambda x: x.get('street', '') if x else np.nan)
-    df['addr_key'] = df['details'].apply(lambda x: x.get('addr_key', '') if x else np.nan)
+# tqdm.pandas(desc="Enriching location Data")
+def enrich_df_with_location_data(df, city_id):
+    temp_df = fetch_all_cache_data_by_city(city_id)
+    df['details'] = df.apply(lambda row: nominatim_api(row, temp_df, save=True), axis=1)
 
+    # df['details'] = df.progress_apply(lambda row: nominatim_api(row, temp_df, save=True), axis=1)
+
+    df['neighborhood'] = df['details'].apply(lambda x: x.get('neighborhood', np.nan) if x else np.nan)
+    df['lat'] = df['details'].apply(lambda x: x.get('lat', np.nan) if x else np.nan)
+    df['long'] = df['details'].apply(lambda x: x.get('long', np.nan) if x else np.nan)
+    df['x'] = df['details'].apply(lambda x: x.get('x', np.nan) if x else np.nan)
+    df['y'] = df['details'].apply(lambda x: x.get('y', np.nan) if x else np.nan)
+    df['zip'] = df['details'].apply(lambda x: x.get('zip', np.nan) if x else np.nan)
     df.drop(columns=['details'], inplace=True)
-    return df
+    return df.dropna(subset=['x'])
 
 def find_missing_floors(df):
     def update_floor(row):
@@ -182,32 +117,41 @@ def maintenance_neighborhood(table):
     add_new_deals_nadlan_clean_neighborhood_complete(big_df)
     return big_df
 
-def run_nadlan_clean(maintenance=False, overhead= False):
+def run_nadlan_clean(city_id, city):
+    maintance = False
     nadlan_clean_status = {}
     try:
-        df = read_raw_data_table(num_of_rows=30000)
-        print(f"start shape : {df.shape}")
-        df = rename_cols_update_data_types(df)
+        df = read_raw_data_table(num_of_rows=120000, city_id=city_id)
+        print(f"(run_nadlan_clean) start shape : {df.shape} , city: {city}")
+        df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
+        df = add_id_columns(df, 'street_id', 'street')
         df = floor_to_numeric(df, floors)
         df = columns_strip_df(df)
-        df = enrich_df_with_location_data(df)
-        if overhead:
+        df = enrich_df_with_location_data(df, city_id)
+        if maintance:
             df = find_missing_floors(df)
+            maintenance_neighborhood('nadlan_clean')
         else:
+            df['floors'] = df['floors'].replace(['NaN', np.nan, ''], None)
             df = df.dropna(subset=['floors'])
+            df['floors'] = df['floors'].astype(float).astype(int)
+
         # df = clean_outliers(df)
         df['new'].fillna(0, inplace=True)
         df['new'] = df['new'].astype(np.int32)
-        data = add_new_deals_nadlan_clean(df)
-        data2 = add_new_deals_nadlan_clean(df,'13.50.98.191')
-        if maintenance:
-            maintenance_neighborhood('nadlan_clean')
-        nadlan_clean_status['success'] = True
-        nadlan_clean_status['new_rows'] = data['new_rows']
-        nadlan_clean_status['conflict_rows'] = data['conflict_rows']
+        # data = add_new_deals_nadlan_clean(df)
+        db_manager = DatabaseManager('nextroof_db', 'localhost', 'nadlan_clean')
+        success, new_rows, conflict_rows = db_manager.insert_dataframe(df, 'key')
 
+        # data2 = add_new_deals_nadlan_clean(df,'13.50.98.191')
+
+        nadlan_clean_status['success'] = success
+        nadlan_clean_status['new_rows'] = new_rows
+        nadlan_clean_status['conflict_rows'] = conflict_rows
+        print(f"Status:(run_nadlan_clean){city} {db_manager}")
     except Exception as e:
         error_message = f"{e}\n{traceback.format_exc()}"
+        print(error_message)
         nadlan_clean_status['success'] = False
         nadlan_clean_status['error'] = error_message
 

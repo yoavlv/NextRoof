@@ -1,25 +1,25 @@
 import pandas as pd
 import numpy as np
 from dev import get_db_engine
-import joblib
 import pickle
-import traceback
 from sqlalchemy import text
 
-def read_addr_table(city):
+def read_addr_table(city_id):
     engine = get_db_engine(db_name='nextroof_db')
-    query = "SELECT * FROM addr_cache WHERE LENGTH(neighborhood) > 3 and city LIKE %s"
-    params = ('%' + city + '%',)
+    query = "SELECT * FROM addr_cache WHERE LENGTH(neighborhood) > 3 and city_id = %s"
+    params = (city_id,)  # Parameters as a tuple
     with engine.connect() as conn:
-        df = pd.read_sql_query(query, conn,params=params)
+        df = pd.read_sql_query(query, conn, params=params)
     return df
 
 
-def read_from_madlan_raw(city=None, item_id=False):
-    engine = get_db_engine()
-    if city:
-        query = "SELECT * FROM madlan_raw WHERE city LIKE %s"
-        params = ('%' + city + '%',)
+def read_from_madlan_raw(city_id=None, item_id=False):
+    engine = get_db_engine(db_name='nadlan_db')
+
+    if city_id is not None:
+        query = "SELECT * FROM madlan_raw WHERE city_id = %s"
+        params = (city_id,)
+
     elif item_id:
         query = """
                 SELECT item_id FROM madlan_raw 
@@ -35,33 +35,35 @@ def read_from_madlan_raw(city=None, item_id=False):
     if item_id:
         return df['item_id'].tolist()
 
-    df.replace({'NaN': np.nan, '': np.nan}, inplace=True)
+    df = df.replace([None, 'NaN', np.nan, ''], np.nan)
 
     return df
 
-def read_from_madlan_rank(city , items_id = False):
+def read_from_madlan_rank(city_id):
     engine = get_db_engine(db_name='nextroof_db')
-    query = "SELECT * FROM madlan_rank WHERE city LIKE %s"
-    params = ('%' + city + '%',)
+    query = "SELECT * FROM madlan_rank WHERE city_id = %s"
+    params = (int(city_id),)
     with engine.connect() as conn:
         df = pd.read_sql_query(query, conn,params=params)
+        conn.close()
 
     df.replace({'NaN': np.nan, 'None': np.nan}, inplace=True)
-    df = df.dropna(subset=['helka_rank', 'street_rank', 'neighborhood_rank'])
+    df = df.dropna(subset=['helka_rank', 'street_rank','gush_rank'])
     df.loc[:, 'helka_rank'] = df['helka_rank'].astype(float).astype(np.int32)
     df.loc[:, 'street_rank'] = df['street_rank'].astype(float).astype(np.int32)
-    df.loc[:, 'neighborhood_rank'] = df['neighborhood_rank'].astype(float).astype(np.int32)
 
     return df
 
-def read_from_madlan_clean(city):
-    engine = get_db_engine(db_name='nadlan_db')
-    query = "SELECT * FROM madlan_clean WHERE city LIKE %s"
-    params = ('%' + city + '%',)
-    with engine.connect() as conn:
-        df = pd.read_sql_query(query, conn,params=params)
 
-    df.replace({'NaN': np.nan, 'None': np.nan}, inplace=True)
+def read_from_madlan_clean(city_id):
+    engine = get_db_engine(db_name='nadlan_db')
+    query = "SELECT * FROM madlan_clean WHERE city_id = %s"
+    params = (city_id,)
+    with engine.connect() as conn:
+        df = pd.read_sql_query(query, conn, params=params)
+        conn.close()
+
+    df = df.replace([None, 'NaN', np.nan, ''], np.nan)
     df = df.dropna(subset=['gush'])
     df.loc[:, 'gush'] = df['gush'].astype(float).astype(np.int32)
     df.loc[:, 'helka'] = df['helka'].astype(float).astype(np.int32)
@@ -69,16 +71,20 @@ def read_from_madlan_clean(city):
     return df
 
 
-def read_model_scaler_from_db(city_id, model=False, scaler= False):
+def read_model_scaler_from_db(city_id, model=False, scaler=False):
     engine = get_db_engine(db_name='nextroof_db')
     with engine.connect() as conn:
         if model:
-            query = text("SELECT model_data FROM ml_models WHERE city_code = :city_id AND model_name = 'stacking'")
-        if scaler:
-            query = text("SELECT model_scaler FROM ml_models WHERE city_code = :city_id AND model_name = 'stacking'")
-        data = conn.execute(query, {'city_id': city_id}).fetchone()[0]
-        return pickle.loads(data)
+            query = text("SELECT model_data FROM ml_models WHERE city_id = :city_id AND model_name = 'stacking'")
+        elif scaler:
+            query = text("SELECT model_scaler FROM ml_models WHERE city_id = :city_id AND model_name = 'stacking'")
 
+        result = conn.execute(query, {'city_id': city_id}).fetchone()
+        if result is None:
+            return None  # Return None if no data found
+        data = result[0]
+
+    return pickle.loads(data)
 
 def delete_records_by_item_ids(item_ids, db_name='nextroof_db',host_name='localhost'):
     engine = get_db_engine(db_name=db_name, host_name=host_name)

@@ -3,41 +3,19 @@ import pandas as pd
 import logging
 logger = logging.getLogger(__name__)
 import re
-import time
 import httpx
 import numpy as np
-df_cache = None
 logging.basicConfig(level=logging.WARNING)
 from backoff import on_exception, expo
-try:
-    from ..dev import get_db_connection
-except:
-    pass
-
-city_dict = {
-    'אשדוד': 1100,
-    'באר שבע': 1200,
-    'בני ברק': 1300,
-    'בת ים': 1400,
-    'גבעתיים': 1500,
-    'הרצלייה': 1600,
-    'חולון': 1700,
-    'חיפה': 1800,
-    'ירושלים': 1900,
-    'כפר סבא': 2000,
-    'נתניה': 2100,
-    'פתח תקווה': 2200,
-    'ראשון לציון': 2300,
-    'רמת גן': 2400,
-    'רמת השרון': 2500,
-    'רעננה': 2600,
-    'תל אביב-יפו': 2700
-}
+from dev import get_db_connection , get_db_engine
+import psycopg2
+from utils.base import add_id_columns
+from utils.utils_sql import DatabaseManager
+import threading
 
 
 def split_address(address):
     try:
-        # Adjusted regular expression to capture the first number in the address
         match = re.match(r'([\u0590-\u05FF\'"׳״\-\s]+)\s(\d+).*?,\s*([\u0590-\u05FF\s-]+)', address)
 
         if not match:
@@ -49,86 +27,111 @@ def split_address(address):
         raise ValueError(f"Error parsing address: {e}")
 
 
+def fetch_from_df(row, df, save):
 
-def fetch_all_cache_data():
-    conn = get_db_connection(db_name='nextroof_db')
-    global df_cache
-    with conn.cursor() as cur:
-        cur.execute("SELECT * FROM addr_cache ")
-        records = cur.fetchall()
-        columns = ['addr_key', "key", "city", "neighborhood", "street", "home_number", "lat", "long", "type", 'x', 'y',
-                   'zip', 'created_at', 'gush', 'helka', 'build_year', 'floors']
-        df_cache = pd.DataFrame(records, columns=columns)
+    try:
+        street_id = row.get('street_id')
+        city_id = row.get('city_id')
+        home_number = int(float(row.get('home_number')))
+    except Exception as e:
+        raise ValueError(f"(fetch_from_df) Error processing row fields: {e}")
 
+    record = df[(df["city_id"] == int(city_id)) & (df["street_id"] == street_id) & (df["home_number"] == int(home_number))]
 
-def fetch_from_df(cache_key):
-    global df_cache
-    record = df_cache[df_cache["key"] == cache_key]
     if not record.empty:
-        return record.iloc[0].to_dict()
+        rec = record.iloc[0].to_dict()
+
+        rec['gush'] = row['gush']
+        rec['helka'] = row['helka']
+        if rec['build_year']:
+            rec['build_year'] = row['build_year']
+
+        if rec['floors']:
+            rec['floors'] = row['floors']
+
+        rec['city'] = row['city']
+        rec['street'] = row['street']
+
+        if rec['date'] < row['date'] and save:
+            rec['date'] = row['date']
+            series_rec = pd.Series(rec)
+            db_manager = DatabaseManager('nextroof_db', 'localhost', 'addr_cache')
+            db_manager.insert_record(series_rec, rec.keys(), ['city_id', 'street_id','home_number'])
+
+        return rec
+
     return None
 
 
-def save_to_db(cache_key, data):
-    global df_cache
+def save_to_db(data):
+    """
+    Save a DataFrame to the addr_cache table in the database.
+    """
     conn = get_db_connection(db_name='nextroof_db')
     if conn:
         try:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO addr_cache (Key, City, Neighborhood, Street, Home_number, Lat, Long, Type, X, Y, Zip, Gush, Helka, Build_year, Floors) 
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (Key) DO NOTHING
-                    RETURNING addr_key
-                    """,
-                    (cache_key, data['city'], data['neighborhood'], data['street'], data['home_number'], data['lat'],
-                     data['long'],
-                     data['type'], data['x'], data['y'], data['zip'], data['gush'], data['helka'], data['build_year'],
-                     data['floors'])
-                )
-
-                result = cur.fetchone()
+                # Prepare the INSERT INTO statement with the correct number of placeholders
+                insert_stmt = """
+                    INSERT INTO addr_cache (city, neighborhood, street, home_number, lat, long, type, x, y, zip, gush, helka, build_year, floors, city_id, street_id, date)
+                    VALUES (%(city)s, %(neighborhood)s, %(street)s, %(home_number)s, %(lat)s, %(long)s, %(type)s, %(x)s, %(y)s, %(zip)s, %(gush)s, %(helka)s, %(build_year)s, %(floors)s, %(city_id)s, %(street_id)s, %(date)s)
+                    ON CONFLICT (city_id, street_id, home_number) DO UPDATE SET
+                        city = EXCLUDED.city,
+                        neighborhood = EXCLUDED.neighborhood,
+                        street = EXCLUDED.street,
+                        home_number = EXCLUDED.home_number,
+                        lat = EXCLUDED.lat,
+                        long = EXCLUDED.long,
+                        type = EXCLUDED.type,
+                        x = EXCLUDED.x,
+                        y = EXCLUDED.y,
+                        zip = EXCLUDED.zip,
+                        gush = EXCLUDED.gush,
+                        helka = EXCLUDED.helka,
+                        build_year = EXCLUDED.build_year,
+                        floors = EXCLUDED.floors,
+                        city_id = EXCLUDED.city_id,
+                        street_id = EXCLUDED.street_id,
+                        date = EXCLUDED.date;
+                """
+                # Ensure data_tuples matches the structure expected by the insert statement
+                cur.execute(insert_stmt, data)
                 conn.commit()
-                if result:
-                    addr_key = result[0]
-                    fetch_all_cache_data()  # improve: instead of read all the table and create new connection add only the spesific row
-                    return addr_key
-                else:
-                    logger.warning(f"No new row was inserted for cache_key: {cache_key}")
-                    return None
-        except Exception as e:
-            print(data)
-            logger.error(f"Failed to save data to DB: {e}")
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f"Error (save_to_db): {error}")
+            conn.rollback()
         finally:
             conn.close()
 
+COUNTER = 0
+def nominatim_api(row, df=None, save=True):
+    global COUNTER
+    city = str(row['city']).strip()
+    street = str(row['street']).strip()
+    home_number = int(float(row['home_number']))
+    city_id = row['city_id']
+    street_id = row['street_id']
 
-def nominatim_api(city, street, gush, helka, build_year, floors, home_number=None):
-    global df_cache
-    if pd.isna(city) or pd.isna(street):
-        return None
+    search_key = f"{city} {street} {home_number}"
 
-    city = city.strip()
-    street = street.strip()
-    home_number = str(home_number).strip()
+    if df is not None:
+        data_from_df = fetch_from_df(row, df, save)
+        if data_from_df:
+            return data_from_df
 
-    cache_key = f"{city} {street} {home_number}" if home_number else f"{city} {street}"
+    COUNTER += 1
+    if COUNTER % 100 == 0:
+        print(COUNTER)
 
-    if df_cache is None:
-        fetch_all_cache_data()
+    result_1 = nominatim_addr(search_key)
+    result_gov = govmap_addr(search_key)
 
-    data_from_df = fetch_from_df(cache_key)
-    if data_from_df:
-        return data_from_df
-
-    result_1 = nominatim_addr(cache_key)
-    result_gov = govmap_addr(cache_key)
-    if result_gov['success']:
-        try:
+    try:
+        if result_gov['success']:
             res_dict = {
-                'city': result_gov['city'],
-                'street': result_gov['street'],
+                'city': row['city'],
+                'street': row['street'],
                 'y': result_gov['y'],
                 'x': result_gov['x'],
                 'neighborhood': result_1['neighborhood'],
@@ -137,19 +140,29 @@ def nominatim_api(city, street, gush, helka, build_year, floors, home_number=Non
                 'long': result_1['long'],
                 'type': result_1['type'],
                 'home_number': home_number,
-                'gush': gush,
-                'helka': helka,
-                'build_year': build_year,
-                'floors': floors,
+                'gush': row['gush'],
+                'helka': row['helka'],
+                'build_year': row['build_year'],
+                'floors': row['floors'],
+                'street_id': street_id,
+                'city_id': city_id,
             }
+            if save:
+                res_dict['date'] = row['date']
 
-        except requests.exceptions.RequestException as e:
-            print(f"An error occurred with nominatim_api : {e} , res_dict: {res_dict}")
-        addr_key = save_to_db(cache_key, res_dict)
-        res_dict['addr_key'] = addr_key
-        time.sleep(1)
-        return res_dict
-    return False
+                save_to_db(res_dict)
+            return res_dict
+    except requests.exceptions.RequestException as e:
+        print(f"(nominatim_api) An error occurred with nominatim_api : {e} ")
+    return {
+        'y': np.nan,
+        'x': np.nan,
+        'neighborhood': np.nan,
+        'zip': np.nan,
+        'lat': np.nan,
+        'long': np.nan,
+        'type': np.nan,
+    }
 
 
 @on_exception(expo, httpx.HTTPError, max_tries=3)
@@ -163,11 +176,11 @@ def govmap_addr(addr):
         json_obj = response.json()
         if json_obj['Error'] == 0:
             address_label = json_obj['data']['ADDRESS'][0]['ResultLable']
-            address = split_address(address_label)
+            # address = split_address(address_label)
             result = {
-                'city': address['city'],
-                'street': address['street'],
-                'home_number': address['home_number'],
+                # 'city': address['city'],
+                # 'street': address['street'],
+                # 'home_number': address['home_number'],
                 'y': json_obj['data']['ADDRESS'][0]['Y'],
                 'x': json_obj['data']['ADDRESS'][0]['X'],
                 'success': True,
@@ -179,7 +192,12 @@ def govmap_addr(addr):
 
     except Exception as e:
         print(f"An error occurred with GovMap API: {e}")
-    return {'success': False}
+    result = {
+        'y': None,
+        'x': None,
+        'success': True,
+    }
+    return result
 
 @on_exception(expo, httpx.HTTPError, max_tries=3)
 def nominatim_addr(query, client=None):
@@ -209,18 +227,14 @@ def nominatim_addr(query, client=None):
 
     response.raise_for_status()
 
-    try:
-        data = response.json()
-        address = data[0].get('address', {})
-    except Exception:
-        print(f"Invalid JSON Query")
+    if not response.json():
         return result
 
+    data = response.json()
+    address = data[0].get('address', {})
 
     result.update({
-        "city": address.get("city", ""),
         "neighborhood": address.get("suburb") or address.get("neighborhood", ""),
-        "street": address.get("road", ""),
         "zip": address.get("postcode", ""),
         "type": data[0].get("type", ""),
         "lat": round(float(data[0].get("lat", "0")), 5),
@@ -229,7 +243,6 @@ def nominatim_addr(query, client=None):
     })
 
     return result
-
 
 
 def calc_distance(df, x2, y2):
@@ -262,6 +275,90 @@ def complete_neighborhood(df):
 
     return pd.concat([df_na, df_notna], ignore_index=True)
 
+
+def rename_cols_update_data_types(df):
+    df = pre_process(df).copy()
+    df = df.dropna(subset=['fulladress'])
+    # Extract and clean the city name
+    df['city'] = df['fulladress'].str.split(',', n=2, expand=True)[1].str.strip()
+    df['city'] = df['city'].apply(lambda x: '-'.join([word.strip() for word in x.split('-')]) if '-' in x else x)
+    df['home_number'] = pd.to_numeric(df['fulladress'].str.extract('([0-9]+)', expand=False), errors='coerce').astype(
+        float)
+
+    df['street'] = df['fulladress'].str.split(',', n=2, expand=True)[0].str.strip()
+    df.loc[:, 'street'] = df.loc[:, 'street'].str.replace(r'\d+', '', regex=True).str.strip()
+    df = df[df['street'].str.len() > 2]
+
+    columns_to_drop = ["projectname", 'polygon_id', 'type', 'displayadress']
+    df = df.drop(columns=columns_to_drop)
+    df = df.dropna(subset=['dealamount', 'city', 'dealnature', 'dealnaturedescription']).reset_index(drop=True)
+
+    unwanted_types = [
+        "nan", "מיני פנטהאוז", "מגורים", "בית בודד", "דופלקס", "קוטג' חד משפחתי", "קוטג' דו משפחתי",
+        'מלונאות', 'חנות', 'קרקע למגורים', 'קבוצת רכישה - קרקע מגורים', 'None', 'אופציה',
+        'קבוצת רכישה - קרקע מסחרי', 'חניה', 'מסחרי + מגורים', 'דירת נופש', 'דיור מוגן', 'קומבינציה', 'מבנים חקלאיים',
+        'תעשיה', 'מסחרי + משרדים', 'בניני ציבור', 'חלוקה/יחוד דירות', 'מחסנים', 'אחר', 'בית אבות', 'עסק',
+        "קוטג' טורי", 'ניוד זכויות בניה', 'משרד', 'ללא תיכנון', 'מלונאות ונופש', 'משרדים + מגורים', 'מלאכה'
+    ]
+    df = df[~df['dealnaturedescription'].isin(unwanted_types)].reset_index(drop=True)
+
+    # Rename columns
+    column_mapping = {
+        'dealamount': 'price',
+        'dealnature': 'size',
+        'dealnaturedescription': 'type',
+        'assetroomnum': 'rooms',
+        'newprojecttext': 'new',
+        'buildingfloors': 'floors',
+        'buildingyear': 'build_year',
+        'yearbuilt': 'rebuilt',
+        'dealdate': 'date',
+        'floorno': 'floor',
+        'keyvalue': 'key',
+
+    }
+
+    df.rename(columns=column_mapping, inplace=True)
+    df['build_year'] = np.where(df['rebuilt'].isna(), df['build_year'], df['rebuilt'])
+
+    df['new'] = pd.to_numeric(df['new'], errors='coerce').fillna(0).astype(int)
+
+    df.loc[df['rooms'].isna(), 'rooms'] = (df['size'] / 30).round()
+    df = df[df['size'] > 24]
+    df['price'] = df['price'].str.replace(',', '').astype(np.int32)
+    df['build_year'] = df['build_year'].fillna('0').astype(np.int32)
+    df['rebuilt'] = df['rebuilt'].fillna('0').astype(np.int32)
+
+    df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
+    df['year'] = df['date'].dt.year.astype(np.int32)
+    df[['gush', 'helka', 'tat']] = df['gush'].str.split('-|/', n=2, expand=True).astype(np.int32)
+    df = df.drop(columns=['fulladress'], axis=1)
+    df = df.dropna(subset=['price', 'size', 'type']).reset_index(drop=True)
+    df = add_id_columns(df, 'city_id', 'city')
+
+    return df
+
+
+def convert_data_types(df):
+    try:
+        df.columns = df.columns.str.lower()
+        float_columns = ['assetroomnum', 'dealnature', 'newprojecttext', 'buildingyear', 'yearbuilt', 'buildingfloors','type']
+        for col in float_columns:
+            if col in df.columns:
+                df[col] = df[col].astype(float)
+    except Exception as e:
+        print(f"An error occurred while converting data types: {e}")
+    return df
+
+def pre_process(df):
+    try:
+        for col in df.columns:
+            df[col] = df[col].replace('NaN', np.nan).replace('', np.nan).replace('None', np.nan)
+        df = convert_data_types(df)
+    except Exception as e:
+        print(f"An error occurred during data pre-processing: {e}")
+    return df
+
 payload = {
     "ObjectID": "5000",
     "CurrentLavel": 2,
@@ -272,7 +369,6 @@ payload = {
 
 cookies = {
     'APP_CTX_USER_ID': 'a123e7c7-66fd-4c46-b286-eb7e43d52e38',
-    'Infinite_user_id_key': 'a123e7c7-66fd-4c46-b286-eb7e43d52e38',
     'Infinite_user_id_key': 'a123e7c7-66fd-4c46-b286-eb7e43d52e38',
     'G_ENABLED_IDPS': 'google',
     'Infinite_ab_tests_context_v2_key': '{%22context%22:{%22_be_sortMarketplaceByDate%22:%22modeA%22%2C%22_be_sortMarketplaceAgeWeight%22:%22modeA%22%2C%22uploadRangeFilter%22:%22modeA%22%2C%22mapLayersV1%22:%22modeB%22%2C%22tabuViewMode%22:%22modeA%22%2C%22homepageSearch%22:%22modeA%22%2C%22removeWizard%22:%22modeB%22%2C%22whatsAppPoc%22:%22modeB%22%2C%22_be_addLastUpdateToWeights%22:%22modeB%22%2C%22quickFilters%22:%22modeA%22%2C%22projectPageNewLayout%22:%22modeB%22}}',
@@ -287,25 +383,4 @@ cookies = {
     '_sp_id.549d': '065d6cdd-43ee-42e4-aa08-b131f450b231.1693913431.2.1693984679.1693914698.00a8ce71-f3c1-42ae-bced-202ea803ffe5',
     'WINDOW_WIDTH': '1075',
     '_pxhd': 'jUtmbGaZxN8SdV0whjtJsE9e-LKDC/JYU42jxFi6v52gvWlse9yKPCoGmvHk0MRfm6cKsD1gcdLhwwU3StEZKA==:vKJHWREy1wPg4LAD0NnaornHxpl1WgD7sGHxfr410FudPlb-ykkAPl0Q9Oal9h635/4qI0npPrn8-JvfiOJDL4smJPT5eGPgOo7Cs9HeFn0=',
-}
-
-city_code = {
-    'תל אביב': 5000,
-    'רמת גן': 8600,
-    'גבעתיים': 6300,
-    'ירושלים': 3000,
-    'פתח תקווה': 7900,
-    'חולון': 6600,
-    'הרצליה': 6400,
-    'רעננה': 8700,
-    # 'רעננה_2': 2700,
-    'בת ים': 6200,
-    'בני ברק': 6100,
-    'כפר סבא': 6900,
-    'רמת השרון': 2650,
-    'ראשון לציון': 8300,
-    'חיפה': 4000,
-    'אשדוד': 70,
-    'נתניה': 7400,
-    'באר שבע': 9000
 }

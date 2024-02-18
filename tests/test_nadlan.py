@@ -2,19 +2,16 @@ import pytest
 import pandas as pd
 from nadlan.nadlan_clean import rename_cols_update_data_types , pre_process ,floor_to_numeric , floors
 import numpy as np
-
-@pytest.mark.skip(reason = 'Need DB connection')
+from conf import PROD
+@pytest.mark.skipif(not PROD, reason="Need DB connection")
 @pytest.fixture
 def input_data():
-    try:
-        from dev import get_db_engine
-        engine = get_db_engine(db_name='nadlan_db',)
-        query = "SELECT * FROM nadlan_raw LIMIT 100"
-        df = pd.read_sql_query(query, engine)
-    except:
-        df =pd.DataFrame
+    from dev import get_db_engine
+    engine = get_db_engine(db_name='nadlan_db',)
+    query = "SELECT * FROM nadlan_raw LIMIT 100"
+    df = pd.read_sql_query(query, engine)
     return df
-@pytest.mark.skip(reason = 'Need DB connection')
+@pytest.mark.skipif(not PROD, reason="Need DB connection")
 def test_pre_process(input_data):
     data = {
         'assetroomnum': ['1', '2.5', np.nan],
@@ -31,7 +28,7 @@ def test_pre_process(input_data):
     for col in df.columns:
         assert df[col].dtype == float, f"Column {col} is not of type float."
 
-@pytest.mark.skip(reason = 'Need DB connection')
+@pytest.mark.skipif(not PROD, reason="Need DB connection")
 def test_rename_cols_update_data_types(input_data):
     result_df = rename_cols_update_data_types(input_data)
     expected_columns = ['date', 'gush', 'type', 'rooms', 'floor', 'size', 'price', 'new',
@@ -70,7 +67,7 @@ def test_rename_cols_update_data_types(input_data):
     # Verify NaN handling for new, floors, and other fields where NaNs are expected to be filled
     assert all(result_df['new'].notnull()), "New column contains NaN values."
 
-@pytest.mark.skip(reason = 'Need DB connection')
+@pytest.mark.skipif(not PROD, reason="Need DB connection")
 def test_valid_floor_conversion(input_data):
     result_df = rename_cols_update_data_types(input_data)
     result_df = floor_to_numeric(result_df, floors)

@@ -1,13 +1,4 @@
 from tqdm import tqdm
-import pandas as pd
-import csv
-import numpy as np
-from datetime import datetime
-from datetime import timedelta
-import math
-import re
-import os
-import sys
 import httpx
 from .sql_gis import read_cities_to_dict
 

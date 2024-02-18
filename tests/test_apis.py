@@ -2,7 +2,8 @@ from nadlan.nadlan_utils import nominatim_addr , govmap_addr
 import pytest
 import httpx
 
-def test_nominatim_addr_success_mcok():
+
+def test_nominatim_addr_success_mock():
     mock_data = [{
         "address": {
             "city": "Test City",

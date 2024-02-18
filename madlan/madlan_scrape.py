@@ -3,20 +3,16 @@ import time
 import re
 from .madlan_utils import cookies, json_data, headers
 import traceback
-from requests.adapters import HTTPAdapter
 import requests
-from urllib3.util.retry import Retry
 from .sql_save_madlan import add_new_deals_madlan_raw
 import logging
+from utils.base import add_id_columns
 logging.basicConfig(level=logging.WARNING)
-
+from utils.utils_sql import DatabaseManager
+import httpx
 def get_madlan_data(json_data, cookies, headers):
-    session = requests.Session()
-    retry = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('https://', adapter)
     try:
-        response = session.post('https://www.madlan.co.il/api2', cookies=cookies, headers=headers, json=json_data, timeout=10)
+        response = httpx.post('https://www.madlan.co.il/api2', cookies=cookies, headers=headers, json=json_data, timeout=30)
         response.raise_for_status()
         responseJson = response.json()
     except requests.exceptions.RequestException as e:
@@ -29,8 +25,10 @@ def get_madlan_data(json_data, cookies, headers):
     limit_value = 50
     extracted_data = []
 
-    for _ in range(0, total, limit_value):
-        print(_)
+    for page in range(0, total, limit_value):
+        if page % 100 == 0:
+            print(f"(get_madlan_data) page: {page}")
+
         time.sleep(3)
         json_data['variables']['offset'] += offset_value
         response = requests.post('https://www.madlan.co.il/api2', cookies=cookies, headers=headers, json=json_data, timeout=10)
@@ -45,7 +43,7 @@ def get_madlan_data(json_data, cookies, headers):
 
         for item in chunckJson:
             check_id = len(item['id'])  # Check if it is a real ad or Advertising
-            if check_id == 11:  # and 'תל אביב' in item['address']:
+            if check_id == 11:
                 image_urls = []
                 images = item.get('images', [])
                 for image in images:
@@ -64,23 +62,23 @@ def get_madlan_data(json_data, cookies, headers):
                     street = splitAdress[0].strip()
                 try:
                     single_data = {
-                        "Item_id": item['id'],
-                        "Lat": item['locationPoint']['lat'],
-                        "Long": item['locationPoint']['lng'],
-                        "City": splitAdress[1],
-                        "Home_number": homeNumber,
-                        "Street": street,
-                        "Rooms": item.get('beds'),
-                        "Neighborhood": item['addressDetails']['neighbourhood'],
-                        "Floor": item.get('floor'),
-                        "Build_year": item.get('buildingYear'),
-                        "Size": item.get('area'),
-                        "Price": item.get('price'),
-                        "Condition": item.get('generalCondition'),
-                        "Last_update": item.get('lastUpdated'),
-                        "Agency": item['poc']['type'],
-                        "Asset_type": item.get('buildingClass'),
-                        "Images": image_urls,
+                        "item_id": item['id'],
+                        "lat": item['locationPoint']['lat'],
+                        "long": item['locationPoint']['lng'],
+                        "city": splitAdress[1],
+                        "home_number": homeNumber,
+                        "street": street,
+                        "rooms": item.get('beds'),
+                        "neighborhood": item['addressDetails']['neighbourhood'],
+                        "floor": item.get('floor'),
+                        "build_year": item.get('buildingYear'),
+                        "size": item.get('area'),
+                        "price": item.get('price'),
+                        "condition": item.get('generalCondition'),
+                        "last_update": item.get('lastUpdated'),
+                        "agency": item['poc']['type'],
+                        "asset_type": item.get('buildingClass'),
+                        "images": image_urls,
                     }
                 except:
                     return pd.DataFrame(extracted_data)
@@ -88,8 +86,8 @@ def get_madlan_data(json_data, cookies, headers):
         offset_value += limit_value
 
     df = pd.DataFrame(extracted_data)
-    df = df.dropna(subset=['Size'])
-    df = df[df['Asset_type'].apply(lambda x: x in ['flat', 'gardenapartment', 'roofflat', 'building', 'studio'])]
+    df = df.dropna(subset=['size'])
+    df = df[df['asset_type'].apply(lambda x: x in ['flat', 'gardenapartment', 'roofflat', 'building', 'studio'])]
 
     return df
 
@@ -100,10 +98,12 @@ def madlan_scrape():
         df_madlan = get_madlan_data(json_data, cookies, headers)
         print(f"madlan_scrape shape {df_madlan.shape}")
         if not df_madlan.empty:
-            data = add_new_deals_madlan_raw(df_madlan)
-            status['success'] = True
-            status['new_rows'] = data['new_rows']
-            status['updated_rows'] = data['updated_rows']
+            df_madlan = add_id_columns(df_madlan, 'city_id', 'city')
+            db_manager = DatabaseManager('nadlan_db', 'localhost', 'madlan_raw')
+            success, new_rows, updated_rows = db_manager.insert_dataframe(df_madlan, 'item_id')
+            status['success'] = success
+            status['new_rows'] = new_rows
+            status['updated_rows'] = updated_rows
 
     except Exception as e:
         error_message = f"{e}\n{traceback.format_exc()}"

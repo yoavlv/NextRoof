@@ -9,7 +9,7 @@ def save_into_db_city_rank(df):
     conflict_count = 0
     new_row_count = 0
     conn = get_db_connection(db_name='nextroof_db')
-
+    print(df.shape)
     try:
         with conn.cursor() as cursor:
             for _, row in df.iterrows():
@@ -41,18 +41,19 @@ def save_into_db_city_rank(df):
 
 def read_cities_to_dict():
     engine = get_db_engine(db_name='nextroof_db')
-    query = "SELECT city_code , city_name FROM cities"
+    query = "SELECT city_code, city_name FROM cities"
     df = pd.read_sql_query(query, engine)
     city_dict = dict(zip(list(df['city_name']), list(df['city_code'])))
     return city_dict
 
 def read_distinct_cities_id():
-    engine = get_db_engine(db_name='nextroof_db')
-    query = "SELECT distinct(city_id) as city_id_distinct FROM deals_2"
+    engine = get_db_engine(db_name='nadlan_db')
+    query = "SELECT distinct(city_id) as city_id_distinct FROM nadlan_raw"
     df = pd.read_sql_query(query, engine)
     return list(df['city_id_distinct'])
-def read_city_from_deals(city_id):
-    engine = get_db_engine(db_name='nextroof_db')
-    query = "SELECT * FROM deals_2 WHERE city_id = %s"
+
+def read_city_from_nadlan_raw(city_id):
+    engine = get_db_engine(db_name='nadlan_db')
+    query = "SELECT * FROM nadlan_raw WHERE city_id = %s"
     df = pd.read_sql_query(query, engine, params=(city_id,))
     return df

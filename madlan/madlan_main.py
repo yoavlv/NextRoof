@@ -4,27 +4,57 @@ from .madlan_rank import main_madlan_ranking
 from .madlan_calc import main_madlan_calc
 from .madlan_utils import check_availability, headers_delete
 from .sql_reader_madlan import  delete_records_by_item_ids
-import logging
-logging.basicConfig(level=logging.WARNING)
+import threading
 
-def madlan_main(city_dict,clean = False):
-    madlan_status = {}
-    if clean:
-        clean_old_ads(headers_delete)
+
+def madlan_main(city_dict, clean=False):
+    madlan_status = {'status_scrape': None, 'status_clean': {}, 'status_rank': {}, 'status_calc': {}}
+    print("(madlan_main) START")
+
+    # if clean:
+    #     clean_old_ads(headers_delete)
+
+    # Scrape data
     madlan_status['status_scrape'] = madlan_scrape()
-    madlan_status['status_clean'] = {}
-    madlan_status['status_rank'] = {}
-    madlan_status['status_calc'] = {}
+    if not madlan_status['status_scrape'].get('success', False):
+        return madlan_status
 
     if madlan_status['status_scrape']['success'] == False:
         return madlan_status
 
-    for city in city_dict.items():
-        print(f"madlan_main:{city[0]}")
-        madlan_status['status_clean'][city[0]] = main_madlan_clean(city[0])
-        madlan_status['status_rank'][city[0]] = main_madlan_ranking(city[0])
-        madlan_status['status_calc'][city[0]] = main_madlan_calc(city)
+    def worker_clean(city_id, city):
+        madlan_status['status_clean'][city] = main_madlan_clean(city_id=city_id, city=city)
+
+    def worker_rank(city_id, city):
+        madlan_status['status_rank'][city] = main_madlan_ranking(city_id=city_id, city=city)
+
+    #
+    # steps = [('clean', worker_clean), ('rank', worker_rank)]
+    # for step_name, worker_function in steps:
+    #     print(f"madlan_main: {step_name}")
+    #     threads = []
+    #     for city_id, city in city_dict.items():
+    #         thread = threading.Thread(target=worker_function, args=(city_id, city))
+    #         threads.append(thread)
+    #         thread.start()
+    #     for thread in threads:
+    #         thread.join()
+
+    print(f"madlan_main: clean")
+    for city_id, city in city_dict.items():
+        madlan_status['status_clean'][city] = main_madlan_clean(city_id=city_id, city=city)
+
+    print(f"madlan_main: rank")
+    for city_id, city in city_dict.items():
+
+        madlan_status['status_rank'][city] = main_madlan_ranking(city_id=city_id, city=city)
+
+    print(f"madlan_main: calc")
+    for city_id, city in city_dict.items():
+        madlan_status['status_calc'][city] = main_madlan_calc(city_id=city_id, city=city)
+
     return madlan_status
+
 
 
 def clean_old_ads(headers_delete):

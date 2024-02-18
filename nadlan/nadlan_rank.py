@@ -1,4 +1,5 @@
 from .sql_save_nadlan import add_new_deals_nadlan_rank
+from utils.utils_sql import DatabaseManager
 from .sql_reader_nadlan import read_from_nadlan_clean
 import numpy as np
 import datetime
@@ -9,14 +10,13 @@ CURRENT_DATE = datetime.datetime.now()
 THREE_MONTHS_EARLIER = CURRENT_DATE - relativedelta(months=3)
 
 
-
-def create_street_and_neighborhood_rank(df, column):
+def create_rank_for_area(df, column):
     '''
     This function need to get -all- the city data to create new ranking for the city
     '''
     rank_dict = {}
     years = df['year'].unique()
-
+    column = str(column)
     for year in years:
         df_by_year = df[df.loc[:, 'year'] == year]
 
@@ -36,21 +36,23 @@ def create_street_and_neighborhood_rank(df, column):
 
     new_column_name = column + '_rank'
 
+    if column == 'street_id':
+        new_column_name = 'street_rank'
+
     df[new_column_name] = np.nan
 
     for index, row in df.iterrows():
         year = row['year']
-        street = row[column]
+        street_id = row[column]
         temp_df = rank_dict[year]
 
-        match = temp_df[temp_df[column] == street]['rank']
+        match = temp_df[temp_df[column] == street_id]['rank']
         if not match.empty:
             df.loc[index, new_column_name] = match.iloc[0]
         else:
             df.loc[index, new_column_name] = np.nan
-
     df = df.dropna(subset=[new_column_name])
-    df.loc[:,new_column_name] = df.loc[:,new_column_name].astype(np.int32)
+    df.loc[:, new_column_name] = df.loc[:, new_column_name].astype(np.int32)
     return df
 
 
@@ -73,13 +75,14 @@ def create_parcel_rank(df):
     '''
     #     df = df.drop_duplicates(subset=['Price', 'Date'])
     # Note : if the max year in the df != today year the calc will not work...
+    df = df.copy()
     df = df[(df['year'] <= THREE_MONTHS_EARLIER.year)]
 
     parcel_rank = {}
 
-    df['gush_helka'] = df.apply(lambda row: str(row['gush']) + str(row['helka']), axis=1)
+    df.loc[:,'gush_helka'] = df.apply(lambda row: str(row['gush']) + str(row['helka']), axis=1)
 
-    df.loc[:, 'helka_rank'] = np.nan
+    df.loc[:, 'helka_rank'] = None
     gush_helka = df['gush_helka'].unique()
 
     change_p = change_by_years(df)
@@ -108,21 +111,24 @@ def create_parcel_rank(df):
     df.drop(columns=['gush_helka'], inplace=True)
 
     return df
-def main_nadlan_rank(city):
+
+def main_nadlan_rank(city, city_id):
     nadlan_rank_status = {}
     try:
-        df = read_from_nadlan_clean(city)
-        df = create_street_and_neighborhood_rank(df, 'neighborhood')
-        df = create_street_and_neighborhood_rank(df, 'street')
+        df = read_from_nadlan_clean(city_id)
+        df = create_rank_for_area(df, 'gush')
+        df = create_rank_for_area(df, 'street_id')
         df = create_parcel_rank(df)
-        data = add_new_deals_nadlan_rank(df)
+        db_manager = DatabaseManager('nextroof_db', 'localhost', 'nadlan_rank')
+        success, new_rows, updated_rows = db_manager.insert_dataframe(df, 'key')
+
         # data2 = add_new_deals_nadlan_rank(df, '13.50.98.191')
-        nadlan_rank_status['success'] = True
-        nadlan_rank_status['new_rows'] = data['new_rows']
-        nadlan_rank_status['updated_rows'] = data['updated_rows']
+        nadlan_rank_status['success'] = success
+        nadlan_rank_status['new_rows'] = new_rows
+        nadlan_rank_status['updated_rows'] = updated_rows
 
     except Exception as e:
-        error_message = f"{e}\n{traceback.format_exc()}"
+        error_message = f"{city}:{e}\n{traceback.format_exc()}"
         nadlan_rank_status['success'] = False
         nadlan_rank_status['error'] = error_message
 
