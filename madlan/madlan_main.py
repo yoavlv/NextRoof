@@ -3,16 +3,18 @@ from .madlan_clean import main_madlan_clean
 from .madlan_rank import main_madlan_ranking
 from .madlan_calc import main_madlan_calc
 from .madlan_utils import check_availability, headers_delete
-from .sql_reader_madlan import  delete_records_by_item_ids
+from .sql_reader_madlan import delete_records_by_item_ids
 import threading
 
 
-def madlan_main(city_dict, clean=False):
+def madlan_main(city_dict, params):
     madlan_status = {'status_scrape': None, 'status_clean': {}, 'status_rank': {}, 'status_calc': {}}
-    print("(madlan_main) START")
+    print(f"(madlan_main) START clean={params['clean']}")
 
-    # if clean:
-    #     clean_old_ads(headers_delete)
+    if params['clean']:
+        print("clean_old_ads: START")
+        clean_old_ads(headers_delete)
+        print("clean_old_ads: FINISH")
 
     # Scrape data
     madlan_status['status_scrape'] = madlan_scrape()
@@ -46,7 +48,6 @@ def madlan_main(city_dict, clean=False):
 
     print(f"madlan_main: rank")
     for city_id, city in city_dict.items():
-
         madlan_status['status_rank'][city] = main_madlan_ranking(city_id=city_id, city=city)
 
     print(f"madlan_main: calc")
@@ -61,8 +62,9 @@ def clean_old_ads(headers_delete):
     try:
         to_delete = check_availability(headers=headers_delete)
         if len(to_delete) >= 1:
-            delete_records_by_item_ids(item_ids=to_delete, db_name='nextroof_db')
-            delete_records_by_item_ids(item_ids=to_delete, db_name='nadlan_db')
-            delete_records_by_item_ids(item_ids=to_delete, db_name='nextroof_db', host_name='13.50.98.191')
+            # delete_records_by_item_ids(item_ids=to_delete, db_name='nadlan_db', host_name='localhost')
+            # delete_records_by_item_ids(item_ids=to_delete, db_name='nextroof_db', host_name='13.50.98.191')
+            delete_records_by_item_ids(item_ids=to_delete, db_name='nextroof_db', host_name='nextroof-rds.cboisuqgg7m3.eu-north-1.rds.amazonaws.com')
+
     except Exception as e:
         print(e)

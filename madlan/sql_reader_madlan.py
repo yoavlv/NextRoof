@@ -14,7 +14,7 @@ def read_addr_table(city_id):
 
 
 def read_from_madlan_raw(city_id=None, item_id=False):
-    engine = get_db_engine(db_name='nadlan_db')
+    engine = get_db_engine(db_name='nextroof_db')
 
     if city_id is not None:
         query = "SELECT * FROM madlan_raw WHERE city_id = %s"
@@ -56,7 +56,7 @@ def read_from_madlan_rank(city_id):
 
 
 def read_from_madlan_clean(city_id):
-    engine = get_db_engine(db_name='nadlan_db')
+    engine = get_db_engine(db_name='nextroof_db')
     query = "SELECT * FROM madlan_clean WHERE city_id = %s"
     params = (city_id,)
     with engine.connect() as conn:
@@ -88,8 +88,8 @@ def read_model_scaler_from_db(city_id, model=False, scaler=False):
 
 def delete_records_by_item_ids(item_ids, db_name='nextroof_db',host_name='localhost'):
     engine = get_db_engine(db_name=db_name, host_name=host_name)
-    tables = ['madlan_raw', 'madlan_clean'] if db_name == 'nadlan_db' else ['madlan_rank', 'madlan_predict']
-
+    # tables = ['madlan_raw', 'madlan_clean'] if db_name == 'nadlan_db' else ['madlan_rank', 'madlan_predict']
+    tables = ['madlan_raw', 'madlan_clean', 'madlan_rank','madlan_predict']
     with engine.connect() as connection:
         trans = connection.begin()
         try:

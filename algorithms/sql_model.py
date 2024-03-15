@@ -1,6 +1,6 @@
 from dev import get_db_connection
 
-def insert_ml_model(model_name, city_id, model_data, model_scaler, scores, params ,hostname='localhost'):
+def insert_ml_model(model_name, city_id, model_data, model_scaler, scores, params, hostname='nextroof-rds.cboisuqgg7m3.eu-north-1.rds.amazonaws.com'):
     try:
         conn = get_db_connection(db_name='nextroof_db',host_name=hostname)
         with conn:

@@ -1,13 +1,11 @@
-from .sql_save_nadlan import add_new_deals_nadlan_rank
 from utils.utils_sql import DatabaseManager
 from .sql_reader_nadlan import read_from_nadlan_clean
 import numpy as np
 import datetime
 from dateutil.relativedelta import relativedelta
 import traceback
-
 CURRENT_DATE = datetime.datetime.now()
-THREE_MONTHS_EARLIER = CURRENT_DATE - relativedelta(months=3)
+THREE_MONTHS_EARLIER = CURRENT_DATE - relativedelta(months=2)
 
 
 def create_rank_for_area(df, column):
@@ -73,8 +71,6 @@ def create_parcel_rank(df):
     '''
     This function need to get -all- the city data to create new ranking for the city
     '''
-    #     df = df.drop_duplicates(subset=['Price', 'Date'])
-    # Note : if the max year in the df != today year the calc will not work...
     df = df.copy()
     df = df[(df['year'] <= THREE_MONTHS_EARLIER.year)]
 
@@ -112,20 +108,23 @@ def create_parcel_rank(df):
 
     return df
 
-def main_nadlan_rank(city, city_id):
+def main_nadlan_rank(city, city_id, local_host=False):
     nadlan_rank_status = {}
     try:
         df = read_from_nadlan_clean(city_id)
         df = create_rank_for_area(df, 'gush')
         df = create_rank_for_area(df, 'street_id')
         df = create_parcel_rank(df)
-        db_manager = DatabaseManager('nextroof_db', 'localhost', 'nadlan_rank')
-        success, new_rows, updated_rows = db_manager.insert_dataframe(df, 'key')
+        if local_host:
+            db_manager = DatabaseManager(table_name='nadlan_rank', db_name='nextroof_db', host_name='localhost')
+            success, new_rows, updated_rows = db_manager.insert_dataframe(df, 'key')
 
-        # data2 = add_new_deals_nadlan_rank(df, '13.50.98.191')
+        db_manager = DatabaseManager(table_name='nadlan_rank', db_name='nextroof_db')
+        success, new_rows, conflict_rows = db_manager.insert_dataframe_batch(df, batch_size=int(df.shape[0]),
+                                                                             replace=True, pk_columns='key')
         nadlan_rank_status['success'] = success
         nadlan_rank_status['new_rows'] = new_rows
-        nadlan_rank_status['updated_rows'] = updated_rows
+        nadlan_rank_status['updated_rows'] = conflict_rows
 
     except Exception as e:
         error_message = f"{city}:{e}\n{traceback.format_exc()}"

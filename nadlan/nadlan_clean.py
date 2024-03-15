@@ -3,72 +3,69 @@ import pandas as pd
 import numpy as np
 from .nadlan_utils import nominatim_api, complete_neighborhood
 from .sql_reader_nadlan import read_raw_data_table, read_from_nadlan_clean, distinct_city_list\
-    , read_from_nadlan_rank_find_floor, fetch_all_cache_data_by_city
-from utils.base import add_id_columns
-from .sql_save_nadlan import add_new_deals_nadlan_clean, add_new_deals_nadlan_clean_neighborhood_complete
-from tqdm import tqdm
+    , read_from_nadlan_rank_find_floor, fetch_all_cache_data_by_city, read_floors_to_dict
+from utils.base import add_id_columns , complete_lat_long
+from .sql_save_nadlan import add_new_deals_nadlan_clean_neighborhood_complete
 import traceback
 from utils.utils_sql import DatabaseManager
+from utils.base import find_most_similar_word
+import re
+def clean_floor_name(floor_name: str) -> str:
+    """
+    Cleans the floor_name string by removing non-digit characters
+    and leading/trailing whitespace.
+    """
+    cleaned_name = re.sub(r'[^\d\w]+', '', floor_name)
+    return cleaned_name.strip()
+def floor_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
+    floor_dict = read_floors_to_dict()
+    df['floor'] = df['floor'].str.replace('קומה', '', regex=False).str.strip()
+    for i in range(0, 41):
+        floor_dict[str(i)] = str(i)
 
-
-
-# def main_add_street_id(df):
-#     city_ids = df['city_id'].unique()
-#     result_df = pd.DataFrame()
-#     for city_id in city_ids:
-#         df_temp = df[df['city_id'] == city_id]
-#         st_df_temp = st_df[st_df['city_id'] == city_id]
-#         merged_df = add_street_id(df_temp, st_df_temp)
-#
-#         result_df = pd.concat([result_df, merged_df], ignore_index=True)
-#
-#     result_df = result_df.dropna(subset=['street_id'])
-#     result_df.loc[:, 'street_id'] = result_df.loc[:, 'street_id'].astype(np.int32)
-#
-#     return result_df.drop(columns=['city_id_st', 'city_st'])
-
-floors = {-1: 'מרתף', 0: 'קרקע', 1: 'ראשונה', 2: 'שניה', 3: 'שלישית', 4: 'רביעית', 5: 'חמישית', 6: 'שישית', 7: 'שביעית', 8: 'שמינית', 9: 'תשיעית', 10: 'עשירית', 11: 'אחת עשרה', 12: 'שתים עשרה', 13: 'שלוש עשרה', 14: 'ארבע עשרה', 15: 'חמש עשרה', 16: 'שש עשרה', 17: 'שבע עשרה', 18: 'שמונה עשרה', 19: 'תשע עשרה', 20: 'עשרים', 21: 'עשרים ואחת', 22: 'עשרים ושתים', 23: 'עשרים ושלוש', 24: 'עשרים וארבע', 25: 'עשרים וחמש', 26: 'עשרים ושש', 27: 'עשרים ושבע', 28: 'עשרים ושמונה', 29: 'עשרים ותשע', 30: 'שלושים', 31: 'שלושים ואחת', 32: 'שלושים ושתים', 33: 'שלושים ושלוש', 34: 'שלושים וארבע', 35: 'שלושים וחמש', 36: 'שלושים ושש', 37: 'שלושים ושבע', 38: 'שלושים ושמונה', 39: 'שלושים ותשע', 40: 'ארבעים'}
-
-def floor_to_numeric(df, floors):
     df = df.dropna(subset=['floor']).copy()
-    replacements = {"יי": "י", "קומה": ""}
-    df.loc[:, 'floor'] = df['floor'].replace(replacements, regex=True)
 
-    # Enhance the floors dictionary
-    floor_dict = {v: k for k, v in floors.items()}
-    floor_dict.update({'א': 1, 'ב': 2, 'ג': 3, 'ד': 4})
-
-    # Function to match floor names to numbers
-    def match_floor_name(floor_name):
-        if floor_name in floor_dict:
-            return floor_dict[floor_name]
+    def match_floor_name(floor_name: str):
+        direct_match = floor_dict.get(floor_name)
+        if direct_match is not None:
+            return direct_match
         split_floor = floor_name.split()
-        return floor_dict.get(split_floor[0], np.nan) if split_floor else np.nan
+        if split_floor:
+            split_match = floor_dict.get(split_floor[0])
+            if split_match is not None:
+                return split_match
 
-    # Apply conversion to each row
+        most_similar = find_most_similar_word(list(floor_dict.keys()), floor_name)
+        if most_similar is not None:
+            return floor_dict.get(most_similar, np.nan)
+
+        cleaned_name = clean_floor_name(floor_name)
+        most_similar_cleaned = find_most_similar_word(list(floor_dict.keys()), cleaned_name)
+        return floor_dict.get(most_similar_cleaned, np.nan)
+
     df['floor'] = df['floor'].apply(match_floor_name)
+    df = df.dropna(subset=['floor'])
 
-    df = df.dropna(subset= 'floor')
     df['floor'] = df['floor'].astype(np.int32)
     return df
 
+
 # tqdm.pandas(desc="Enriching location Data")
-def enrich_df_with_location_data(df, city_id):
+def enrich_df_with_location_data(df: pd.DataFrame, city_id:int)->pd.DataFrame:
     temp_df = fetch_all_cache_data_by_city(city_id)
     df['details'] = df.apply(lambda row: nominatim_api(row, temp_df, save=True), axis=1)
 
     # df['details'] = df.progress_apply(lambda row: nominatim_api(row, temp_df, save=True), axis=1)
-
     df['neighborhood'] = df['details'].apply(lambda x: x.get('neighborhood', np.nan) if x else np.nan)
-    df['lat'] = df['details'].apply(lambda x: x.get('lat', np.nan) if x else np.nan)
-    df['long'] = df['details'].apply(lambda x: x.get('long', np.nan) if x else np.nan)
     df['x'] = df['details'].apply(lambda x: x.get('x', np.nan) if x else np.nan)
     df['y'] = df['details'].apply(lambda x: x.get('y', np.nan) if x else np.nan)
     df['zip'] = df['details'].apply(lambda x: x.get('zip', np.nan) if x else np.nan)
     df.drop(columns=['details'], inplace=True)
-    return df.dropna(subset=['x'])
+    df = df.dropna(subset=['x'])
+    df = complete_lat_long(df)
+    return df
 
-def find_missing_floors(df):
+def find_missing_floors(df: pd.DataFrame)-> pd.DataFrame:
     def update_floor(row):
         if pd.isna(row['floors']):
             street =row['street'].replace("'",'')
@@ -84,7 +81,7 @@ def find_missing_floors(df):
     return df
 
 
-def clean_outliers(df):
+def clean_outliers(df: pd.DataFrame) -> pd.DataFrame:
     df['PPM'] = (df["price"] / df['size']).astype(np.int32)
     columns = ['PPM']
     for col in columns:
@@ -97,15 +94,13 @@ def clean_outliers(df):
     return df
 
 
-def columns_strip_df(df):
+def columns_strip_df(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
-        try:
+        if df[col].dtype == 'object':
             df[col] = df[col].str.strip()
-        except:
-            pass
     return df
 
-def maintenance_neighborhood(table):
+def maintenance_neighborhood(table: str)-> pd.DataFrame:
     big_df = pd.DataFrame()
     city_list = distinct_city_list(table)
     for city in city_list:
@@ -117,38 +112,49 @@ def maintenance_neighborhood(table):
     add_new_deals_nadlan_clean_neighborhood_complete(big_df)
     return big_df
 
-def run_nadlan_clean(city_id, city):
+def run_nadlan_clean(city_id: int, city: str, local_host=False)-> dict:
     maintance = False
     nadlan_clean_status = {}
     try:
         df = read_raw_data_table(num_of_rows=120000, city_id=city_id)
-        print(f"(run_nadlan_clean) start shape : {df.shape} , city: {city}")
-        df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
-        df = add_id_columns(df, 'street_id', 'street')
-        df = floor_to_numeric(df, floors)
-        df = columns_strip_df(df)
-        df = enrich_df_with_location_data(df, city_id)
-        if maintance:
-            df = find_missing_floors(df)
-            maintenance_neighborhood('nadlan_clean')
+        if not df.empty:
+            print(f"(run_nadlan_clean) start shape : {df.shape} , city: {city}")
+            df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
+            df = add_id_columns(df, 'street_id', 'street')
+            df = floor_to_numeric(df)
+            df = columns_strip_df(df)
+            df = enrich_df_with_location_data(df, city_id)
+            if maintance:
+                df = find_missing_floors(df)
+                maintenance_neighborhood('nadlan_clean')
+            else:
+                df['floors'] = df['floors'].replace(['NaN', np.nan, ''], None)
+                df = df.dropna(subset=['floors'])
+                df['floors'] = df['floors'].astype(float).astype(int)
+
+            df['new'].fillna(0, inplace=True)
+            df['new'] = df['new'].astype(np.int32)
+            new_rows = 0
+            conflict_rows = 0
+            if not df.empty:
+                if local_host:
+                    db_manager = DatabaseManager(table_name='nadlan_clean', db_name='nextroof_db', host_name='localhost')
+                    success, new_rows, conflict_rows = db_manager.insert_dataframe(df, 'key')
+
+
+                db_manager = DatabaseManager(table_name='nadlan_clean', db_name='nextroof_db')
+                success, new_rows, conflict_rows = db_manager.insert_dataframe_batch(df, batch_size=int(df.shape[0]), replace=True, pk_columns='key')
+
+            nadlan_clean_status['success'] = True
+            nadlan_clean_status['new_rows'] = new_rows
+            nadlan_clean_status['conflict_rows'] = conflict_rows
+            print(f"Status:(run_nadlan_clean){city} new_rows:{new_rows}, conflict_rows:{conflict_rows}")
         else:
-            df['floors'] = df['floors'].replace(['NaN', np.nan, ''], None)
-            df = df.dropna(subset=['floors'])
-            df['floors'] = df['floors'].astype(float).astype(int)
+            nadlan_clean_status['success'] = True
+            nadlan_clean_status['new_rows'] = 0
+            nadlan_clean_status['conflict_rows'] = 0
+            print(f"Status:(run_nadlan_clean){city} No new deals")
 
-        # df = clean_outliers(df)
-        df['new'].fillna(0, inplace=True)
-        df['new'] = df['new'].astype(np.int32)
-        # data = add_new_deals_nadlan_clean(df)
-        db_manager = DatabaseManager('nextroof_db', 'localhost', 'nadlan_clean')
-        success, new_rows, conflict_rows = db_manager.insert_dataframe(df, 'key')
-
-        # data2 = add_new_deals_nadlan_clean(df,'13.50.98.191')
-
-        nadlan_clean_status['success'] = success
-        nadlan_clean_status['new_rows'] = new_rows
-        nadlan_clean_status['conflict_rows'] = conflict_rows
-        print(f"Status:(run_nadlan_clean){city} {db_manager}")
     except Exception as e:
         error_message = f"{e}\n{traceback.format_exc()}"
         print(error_message)

@@ -1,6 +1,10 @@
-#*.csv
 *.json
 *.pkl
+*.cfg
+*.pid
+*.csv
+
+webserver_config.py
 Algorithms/*.pkl
 algorithms/models
 algorithms/catboost_info
@@ -10,6 +14,9 @@ main/catboost_info
 Clean/sql_functions.py
 /catboost_info
 Data/*.csv
+/plugins
+/logs
+
 /venv
 /ranking.ipynb
 /scraping

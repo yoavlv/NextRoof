@@ -8,7 +8,7 @@ from sklearn.ensemble import StackingRegressor, RandomForestRegressor, GradientB
 from sklearn.metrics import r2_score ,mean_absolute_error
 from catboost import CatBoostRegressor
 from algorithms.model_data import params, best_params, models_list, lean_params
-from algorithms.model_plots import result_plot , plot_model_scores
+from algorithms.model_plots import result_plot, plot_model_scores
 from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
 from datetime import datetime
@@ -17,7 +17,7 @@ import traceback
 from .sql_model import insert_ml_model
 import pickle
 
-def get_models_with_best_params(best_params):
+def get_models_with_best_params(best_params: dict)->dict:
     models = dict()
     models['CatBoostRegressor'] = CatBoostRegressor(**best_params['CatBoostRegressor'], logging_level='Silent')
     models['XGBRegressor'] = XGBRegressor(**best_params['XGBRegressor'])
@@ -28,7 +28,7 @@ def get_models_with_best_params(best_params):
     return models
 
 
-def get_stacking(params):
+def get_stacking(params:dict)->StackingRegressor:
     level0 = []
     level0.append(('CatBoostRegressor', CatBoostRegressor(**params['CatBoostRegressor'], logging_level='Silent')))
     level0.append(('RandomForestRegressor', RandomForestRegressor(**params['RandomForestRegressor'])))
@@ -41,7 +41,7 @@ def get_stacking(params):
     model = StackingRegressor(estimators=level0, final_estimator=level1, cv=5)
     return model
 
-def find_best_params(models, params, X_train_selected, y_train):
+def find_best_params(models, params, X_train_selected, y_train)->dict:
     best_params = {}
     for name, model in models.items():
         print("Tuning", name)
@@ -52,7 +52,7 @@ def find_best_params(models, params, X_train_selected, y_train):
     return best_params
 
 
-def evaluate_model(model, X_train_scaled, X_test_scaled, y_train, y_test):
+def evaluate_model(model, X_train_scaled, X_test_scaled, y_train, y_test)->dict:
     model_train = model.fit(X_train_scaled, y_train)
     cv = RepeatedKFold(n_splits=10, n_repeats=3, random_state=42)
     results_score = cross_val_score(model_train, X_test_scaled, y_test, scoring='neg_mean_absolute_error', cv=cv,n_jobs=-1)
@@ -81,8 +81,11 @@ def data_prep(df, start_year=2005, end_year=2025, min_price=800000, max_price=10
 
     current_year = datetime.now().year
     df['age'] = current_year - df['build_year']
-
-    cols = ["rooms", "floor", "size", "price", "build_year", "floors","year", "age", "gush_rank", "street_rank", "helka_rank", "new"]
+    df = filter_type(df)
+    cols = ["rooms", "floor", "size", "price", "build_year", "floors","year", "age", "gush_rank", "street_rank",
+            "helka_rank", "new", 'type_apartment',
+       'type_apartment_in_building', 'type_rooftop_apartment',
+       'type_penthouse', 'type_garden_apartment']
     df = df.dropna(subset=cols)
 
     df['floors'] = df['floors'].astype(float).astype(np.int32)
@@ -101,13 +104,34 @@ def data_prep(df, start_year=2005, end_year=2025, min_price=800000, max_price=10
     scaler_bytes = pickle.dumps(scaler)
 
     return X_train_scaled, X_test_scaled, y_train, y_test, X_train ,scaler_bytes
+def filter_type(df: pd.DataFrame)->pd.DataFrame:
+    type_list = ['דירה בבית קומות', 'דירה', 'דירת גג', 'דירת גן']
+    pattern = '|'.join(type_list)
+    df_filtered = df[df['type'].str.contains(pattern, na=False)]  # Ensure it handles NaN values in 'type'
+    df_encoded = pd.get_dummies(df_filtered, columns=['type'], dummy_na=False)  # Avoid creating NaN column
+    col_name_mapping = {
+        'type_דירה': 'type_apartment',
+        'type_דירה בבית קומות': 'type_apartment_in_building',
+        'type_דירת גג': 'type_rooftop_apartment',
+        'type_דירת גג (פנטהאוז)': 'type_penthouse',
+        'type_דירת גן': 'type_garden_apartment'
+    }
+    df_encoded = df_encoded.rename(columns=col_name_mapping)
 
-def init_model(city_id,city, params):
+    # Ensure all expected columns exist, add them with default value 0 if missing
+    expected_cols = ['type_apartment', 'type_apartment_in_building', 'type_rooftop_apartment', 'type_penthouse', 'type_garden_apartment']
+    for col in expected_cols:
+        if col not in df_encoded.columns:
+            df_encoded[col] = 0
+
+    return df_encoded
+
+def init_model(city_id: int,city: str, params: dict, local_host=False)->dict:
     status = {'city': city}
     try:
         print(f'(init_model) {city}')
         df = read_from_nadlan_rank(city_id)
-        X_train_scaled, X_test_scaled, y_train, y_test , X_train, scaler_bytes = data_prep(df)
+        X_train_scaled, X_test_scaled, y_train, y_test, X_train, scaler_bytes = data_prep(df)
 
         if params['find_best_params']:
             new_best_params = find_best_params(models_list, params, X_train_scaled, y_train)
@@ -128,17 +152,10 @@ def init_model(city_id,city, params):
 
         stacking_model = saved_models['stacking']
         model_bytes = pickle.dumps(stacking_model)
-        record = {
-            'city_code': city_id,
-            'model_name': 'stacking',
-            'model_bytes': model_bytes,
-            'scaler_bytes': scaler_bytes,
-            'scores': str(scores['stacking']),
-            'params': str(lean_params),
-        }
 
+        if local_host:
+            insert_ml_model('stacking', city_id, model_bytes, scaler_bytes, str(scores['stacking']), str(lean_params), hostname='localhost')
         insert_ml_model('stacking', city_id, model_bytes, scaler_bytes, str(scores['stacking']), str(lean_params))
-        insert_ml_model('stacking', city_id, model_bytes, scaler_bytes, str(scores['stacking']), str(lean_params) , '13.50.98.191')
 
         # plot_model_scores(scores)
         # result_plot(scores)
@@ -160,7 +177,7 @@ def init_model(city_id,city, params):
         })
     return status
 
-def train_model_main(city_dict, params):
+def train_model_main(city_dict: dict, params: dict)->dict:
     status = {}
     for city_id, city in city_dict.items():
         model_status = init_model(city_id, city,params)

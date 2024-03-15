@@ -1,4 +1,3 @@
-import requests
 import sys
 import re
 sys.path.append('C:/Users/yoavl/NextRoof/')
@@ -33,7 +32,7 @@ def get_gush_helka_api(city_id, street_id, home_number):
             }
 
         else:
-            print("Expected data not found in response.")
+            print("Expected data not found in response (invalid address.")
             return None
     except httpx.RequestError as e:
         print(f"An error occurred while requesting {e.request.url!r}.")

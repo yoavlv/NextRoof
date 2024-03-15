@@ -47,7 +47,6 @@ payload = {
 cookies = {
     'APP_CTX_USER_ID': 'a123e7c7-66fd-4c46-b286-eb7e43d52e38',
     'Infinite_user_id_key': 'a123e7c7-66fd-4c46-b286-eb7e43d52e38',
-    'Infinite_user_id_key': 'a123e7c7-66fd-4c46-b286-eb7e43d52e38',
     'G_ENABLED_IDPS': 'google',
     'Infinite_ab_tests_context_v2_key': '{%22context%22:{%22_be_sortMarketplaceByDate%22:%22modeA%22%2C%22_be_sortMarketplaceAgeWeight%22:%22modeA%22%2C%22uploadRangeFilter%22:%22modeA%22%2C%22mapLayersV1%22:%22modeB%22%2C%22tabuViewMode%22:%22modeA%22%2C%22homepageSearch%22:%22modeA%22%2C%22removeWizard%22:%22modeB%22%2C%22whatsAppPoc%22:%22modeB%22%2C%22_be_addLastUpdateToWeights%22:%22modeB%22%2C%22quickFilters%22:%22modeA%22%2C%22projectPageNewLayout%22:%22modeB%22}}',
     'USER_TOKEN_V2': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleGFjdC10aW1lIjoxNjkzOTEyNzc0NjEwLCJwYXlsb2FkIjoie1widWlkXCI6XCJkNDg5YWE2Zi01MDQ5LTQxMzAtOTU0Yi04ZWI3ZTZhMzRjNDJcIixcInNlc3Npb24taWRcIjpcIjJhZWM0ZGVhLWQ2ZTgtNGUwNS05YzUzLWUzOTUyZmY3OGRkN1wiLFwidHRsXCI6NjMxMTUyMDB9IiwiaWF0IjoxNjkzOTEyNzc0LCJpc3MiOiJsb2NhbGl6ZSIsInVzZXJJZCI6ImQ0ODlhYTZmLTUwNDktNDEzMC05NTRiLThlYjdlNmEzNGM0MiIsInJlZ2lzdHJhdGlvblR5cGUiOiJWSVNJVE9SIiwicm9sZXMiOlsiVklTSVRPUiJdLCJpc0ltcGVyc29uYXRpb25Mb2dJbiI6ZmFsc2UsInNhbHQiOiIyYWVjNGRlYS1kNmU4LTRlMDUtOWM1My1lMzk1MmZmNzhkZDciLCJ2IjoyLCJleHAiOjE3NTcwMjc5NzR9.VotKqMoFvOetPjvbtpXlfJdtRmrA7wPpV7fqlC8JC74',

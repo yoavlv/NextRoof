@@ -1,8 +1,9 @@
 import pytest
 import pandas as pd
-from nadlan.nadlan_clean import rename_cols_update_data_types , pre_process ,floor_to_numeric , floors
+from nadlan.nadlan_clean import floor_to_numeric
 import numpy as np
 from conf import PROD
+
 @pytest.mark.skipif(not PROD, reason="Need DB connection")
 @pytest.fixture
 def input_data():

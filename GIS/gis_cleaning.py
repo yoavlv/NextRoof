@@ -1,9 +1,8 @@
 import pandas as pd
-import numpy as np
-from sql_gis import read_distinct_cities_id ,read_city_from_nadlan_raw ,save_into_db_city_rank
+from sql_gis import read_distinct_cities_id, read_city_from_nadlan_raw, save_into_db_city_rank
 
 
-def calculate_city_price_per_year(df, years):
+def calculate_city_price_per_year(df: pd.DataFrame, years: list)->dict:
     rank_dict = {}
     for year in years:
         temp_df = df[df['year'] == year]

@@ -7,14 +7,13 @@ import httpx
 import numpy as np
 logging.basicConfig(level=logging.WARNING)
 from backoff import on_exception, expo
-from dev import get_db_connection , get_db_engine
+from dev import get_db_connection
 import psycopg2
 from utils.base import add_id_columns
 from utils.utils_sql import DatabaseManager
-import threading
+from typing import Optional, Dict, Any
 
-
-def split_address(address):
+def split_address(address: str)->dict:
     try:
         match = re.match(r'([\u0590-\u05FF\'"׳״\-\s]+)\s(\d+).*?,\s*([\u0590-\u05FF\s-]+)', address)
 
@@ -27,7 +26,7 @@ def split_address(address):
         raise ValueError(f"Error parsing address: {e}")
 
 
-def fetch_from_df(row, df, save):
+def fetch_from_df(row: Dict[str, Any], df: pd.DataFrame, save: bool) -> Optional[Dict[str, Any]]:
 
     try:
         street_id = row.get('street_id')
@@ -55,7 +54,7 @@ def fetch_from_df(row, df, save):
         if rec['date'] < row['date'] and save:
             rec['date'] = row['date']
             series_rec = pd.Series(rec)
-            db_manager = DatabaseManager('nextroof_db', 'localhost', 'addr_cache')
+            db_manager = DatabaseManager(db_name='nextroof_db', table_name='addr_cache')
             db_manager.insert_record(series_rec, rec.keys(), ['city_id', 'street_id','home_number'])
 
         return rec
@@ -63,7 +62,7 @@ def fetch_from_df(row, df, save):
     return None
 
 
-def save_to_db(data):
+def save_to_db(data: dict) -> None:
     """
     Save a DataFrame to the addr_cache table in the database.
     """
@@ -73,15 +72,13 @@ def save_to_db(data):
             with conn.cursor() as cur:
                 # Prepare the INSERT INTO statement with the correct number of placeholders
                 insert_stmt = """
-                    INSERT INTO addr_cache (city, neighborhood, street, home_number, lat, long, type, x, y, zip, gush, helka, build_year, floors, city_id, street_id, date)
-                    VALUES (%(city)s, %(neighborhood)s, %(street)s, %(home_number)s, %(lat)s, %(long)s, %(type)s, %(x)s, %(y)s, %(zip)s, %(gush)s, %(helka)s, %(build_year)s, %(floors)s, %(city_id)s, %(street_id)s, %(date)s)
+                    INSERT INTO addr_cache (city, neighborhood, street, home_number, type, x, y, zip, gush, helka, build_year, floors, city_id, street_id, date)
+                    VALUES (%(city)s, %(neighborhood)s, %(street)s, %(home_number)s, %(type)s, %(x)s, %(y)s, %(zip)s, %(gush)s, %(helka)s, %(build_year)s, %(floors)s, %(city_id)s, %(street_id)s, %(date)s)
                     ON CONFLICT (city_id, street_id, home_number) DO UPDATE SET
                         city = EXCLUDED.city,
                         neighborhood = EXCLUDED.neighborhood,
                         street = EXCLUDED.street,
                         home_number = EXCLUDED.home_number,
-                        lat = EXCLUDED.lat,
-                        long = EXCLUDED.long,
                         type = EXCLUDED.type,
                         x = EXCLUDED.x,
                         y = EXCLUDED.y,
@@ -105,7 +102,7 @@ def save_to_db(data):
             conn.close()
 
 COUNTER = 0
-def nominatim_api(row, df=None, save=True):
+def nominatim_api(row: Dict[str, Any], df: Optional[pd.DataFrame] = None, save: bool = True) -> Dict[str, Any]:
     global COUNTER
     city = str(row['city']).strip()
     street = str(row['street']).strip()
@@ -136,8 +133,6 @@ def nominatim_api(row, df=None, save=True):
                 'x': result_gov['x'],
                 'neighborhood': result_1['neighborhood'],
                 'zip': result_1['zip'],
-                'lat': result_1['lat'],
-                'long': result_1['long'],
                 'type': result_1['type'],
                 'home_number': home_number,
                 'gush': row['gush'],
@@ -159,16 +154,13 @@ def nominatim_api(row, df=None, save=True):
         'x': np.nan,
         'neighborhood': np.nan,
         'zip': np.nan,
-        'lat': np.nan,
-        'long': np.nan,
         'type': np.nan,
     }
 
 
 @on_exception(expo, httpx.HTTPError, max_tries=3)
-def govmap_addr(addr):
+def govmap_addr(addr: str) -> Dict[str, Any]:
     link = f"https://es.govmap.gov.il/TldSearch/api/DetailsByQuery?query={addr}&lyrs=276267023&gid=govmap"
-
     try:
         response = httpx.get(link, timeout=30)
         response.raise_for_status()
@@ -200,7 +192,7 @@ def govmap_addr(addr):
     return result
 
 @on_exception(expo, httpx.HTTPError, max_tries=3)
-def nominatim_addr(query, client=None):
+def nominatim_addr(query: str, client: Optional[httpx.Client] = None) -> Dict[str, Any]:
     base_url = "https://nominatim.openstreetmap.org/search"
     params = {
         'q': query,
@@ -211,8 +203,6 @@ def nominatim_addr(query, client=None):
         "neighborhood": None,
         "type": None,
         "zip": None,
-        "lat": None,
-        "long": None,
         'success': False,
     }
 
@@ -237,15 +227,13 @@ def nominatim_addr(query, client=None):
         "neighborhood": address.get("suburb") or address.get("neighborhood", ""),
         "zip": address.get("postcode", ""),
         "type": data[0].get("type", ""),
-        "lat": round(float(data[0].get("lat", "0")), 5),
-        "long": round(float(data[0].get("lon", "0")), 5),
         'success': True,
     })
 
     return result
 
 
-def calc_distance(df, x2, y2):
+def calc_distance(df: pd.DataFrame, x2: float, y2: float) -> Optional[str]:
     distance = 10000
     closest_neighborhood = None
 
@@ -262,7 +250,7 @@ def calc_distance(df, x2, y2):
     return closest_neighborhood
 
 
-def complete_neighborhood(df):
+def complete_neighborhood(df: pd.DataFrame) -> pd.DataFrame:
     df['neighborhood'] = df['neighborhood'].replace('', np.nan)
     df_na = df[df['neighborhood'].isna()].copy()
     df_notna = df[df['neighborhood'].notna()]
@@ -276,7 +264,7 @@ def complete_neighborhood(df):
     return pd.concat([df_na, df_notna], ignore_index=True)
 
 
-def rename_cols_update_data_types(df):
+def rename_cols_update_data_types(df: pd.DataFrame) -> pd.DataFrame:
     df = pre_process(df).copy()
     df = df.dropna(subset=['fulladress'])
     # Extract and clean the city name
@@ -339,7 +327,7 @@ def rename_cols_update_data_types(df):
     return df
 
 
-def convert_data_types(df):
+def convert_data_types(df: pd.DataFrame) -> pd.DataFrame:
     try:
         df.columns = df.columns.str.lower()
         float_columns = ['assetroomnum', 'dealnature', 'newprojecttext', 'buildingyear', 'yearbuilt', 'buildingfloors','type']
@@ -350,7 +338,7 @@ def convert_data_types(df):
         print(f"An error occurred while converting data types: {e}")
     return df
 
-def pre_process(df):
+def pre_process(df: pd.DataFrame) -> pd.DataFrame:
     try:
         for col in df.columns:
             df[col] = df[col].replace('NaN', np.nan).replace('', np.nan).replace('None', np.nan)

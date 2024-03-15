@@ -76,7 +76,7 @@ def complete_data(df):
 #     return df
 
 
-def main_madlan_clean(city, city_id):
+def main_madlan_clean(city, city_id, local_host=False):
     status = {}
     try:
         df = read_from_madlan_raw(city_id)
@@ -89,8 +89,17 @@ def main_madlan_clean(city, city_id):
         df['gush'] = df['gush'].astype(float).astype(np.int32)
         df['helka'] = df['helka'].astype(float).astype(np.int32)
         data = add_new_deals_madlan_clean(df)
-        db_manager = DatabaseManager('nadlan_db', 'localhost', 'madlan_clean')
-        success, new_rows, updated_rows = db_manager.insert_dataframe(df, 'item_id')
+        new_rows = 0
+        updated_rows = 0
+        success = False
+        if not df.empty:
+            if local_host:
+                db_manager = DatabaseManager(table_name='madlan_clean', db_name='nadlan_db', host_name='localhost')
+                success, new_rows, updated_rows = db_manager.insert_dataframe(df, 'item_id')
+
+            db_manager = DatabaseManager(table_name='madlan_clean', db_name='nextroof_db')
+            success, new_rows, updated_rows = db_manager.insert_dataframe_batch(df, batch_size=int(df.shape[0]),
+                                                                                replace=True, pk_columns='item_id')
         status['success'] = success
         status['new_rows'] = new_rows
         status['updated_rows'] = updated_rows

@@ -1,20 +1,16 @@
-import sys
-sys.path.append('/nadlan')
 from .nadlan_utils import payload
 import time
 import concurrent.futures
 import pandas as pd
 import httpx
-from .sql_save_nadlan import add_new_deals_nadlan_raw
 import logging
 logging.basicConfig(level=logging.WARNING)
 import traceback
 from .nadlan_utils import rename_cols_update_data_types
 from utils.utils_sql import DatabaseManager
-
 url = "https://www.nadlan.gov.il/Nadlan.REST/Main/GetAssestAndDeals"
 
-def one_thread(url, payload, max_pages=10):
+def one_thread(url: str, payload: dict, max_pages=10)-> dict:
     last_page = False
     payload['PageNo'] = 1
     df = pd.DataFrame()
@@ -53,7 +49,7 @@ def one_thread(url, payload, max_pages=10):
         data = aggregate_insert_results(data, new_data)
 
     return data
-def preprocess_dataframe(df):
+def preprocess_dataframe(df: pd.DataFrame)->pd.DataFrame:
     df.drop_duplicates(inplace=True)
     cols_to_drop = ["DEALDATETIME", "TREND_IS_NEGATIVE", "TREND_FORMAT"]
     df = df.drop(cols_to_drop, axis=1)
@@ -61,21 +57,22 @@ def preprocess_dataframe(df):
     df.columns = [col.lower() for col in df.columns]
     return df
 
-def aggregate_insert_results(existing_data, new_data):
+def aggregate_insert_results(existing_data: dict, new_data:dict)->dict:
     existing_data['new_rows'] += new_data['new_rows']
     existing_data['conflict_rows'] += new_data['conflict_rows']
     return existing_data
 
-def insert_to_db(df):
-    print(f'(insert_to_db){df.shape}')
-    db_manager = DatabaseManager('nadlan_db', 'localhost', 'nadlan_raw')
-    success, new_rows, conflict_rows = db_manager.insert_dataframe(df, 'key','Nothing')
-    print(db_manager)
+def insert_to_db(df: pd.DataFrame, local_host=False)->dict:
+    if local_host:
+        db_manager = DatabaseManager(table_name='nadlan_raw', db_name='nadlan_db', host_name='localhost')
+        success, new_rows, conflict_rows = db_manager.insert_dataframe(df, pk_columns='key', replace=False)
+
+    db_manager = DatabaseManager(table_name='nadlan_raw', db_name='nextroof_db')
+    success, new_rows, conflict_rows = db_manager.insert_dataframe_batch(df, batch_size=int(df.shape[0]),replace=True, pk_columns='key')
     return {"new_rows":new_rows,"conflict_rows":conflict_rows}
-    # return add_new_deals_nadlan_raw(df)
 
 
-def main_loop(city_code_dict, payload, num_of_pages):
+def main_loop(city_code_dict:dict, payload:dict, num_of_pages:int)->dict:
     data = {'new_rows': 0, 'conflict_rows': 0}
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(city_code_dict)) as executor:
         futures = {executor.submit(one_thread, url, {**payload, 'ObjectID': str(city_code)}, num_of_pages):
@@ -92,7 +89,7 @@ def main_loop(city_code_dict, payload, num_of_pages):
     logging.info("All city tasks completed.")
     return data
 
-def run_nadlan_scrape(city_dict,num_of_pages=20, threads=10):
+def run_nadlan_scrape(city_dict:dict,num_of_pages=20, threads=10)->dict:
     nadlan_scrape_status = {'status': False, 'new_rows': 0, 'conflict_rows': 0}
     try:
         data = main_loop(city_dict, payload, num_of_pages=num_of_pages)

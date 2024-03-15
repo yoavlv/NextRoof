@@ -1,4 +1,4 @@
-from nadlan.nadlan_utils import nominatim_addr , govmap_addr
+from nadlan.nadlan_utils import nominatim_addr, govmap_addr
 import pytest
 import httpx
 

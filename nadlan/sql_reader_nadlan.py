@@ -1,10 +1,26 @@
 import pandas as pd
 import numpy as np
 from sqlalchemy import text, exc
-import sqlalchemy
 from dev import get_db_engine
 from sqlalchemy.exc import SQLAlchemyError
 
+
+def read_floors_to_dict():
+    engine = get_db_engine(db_name='nextroof_db')
+    floors_dict = {}
+
+    try:
+        with engine.connect() as conn:
+            query = text("SELECT floor_name , floor_num FROM floors;")
+            result = conn.execute(query).fetchall()
+            for row in result:
+                city_id, city_name = row
+                floors_dict[city_id] = city_name
+
+    except SQLAlchemyError as e:
+        raise SQLAlchemyError(f"Error during database operation: {e}")
+
+    return floors_dict
 def fetch_all_cache_data_by_city(city_id):
     engine = get_db_engine(db_name='nextroof_db')
     query = "SELECT * FROM addr_cache WHERE city_id = %s"
@@ -35,7 +51,7 @@ def read_from_population(city_id_list=None, population_size=10000):
     return city_dict
 
 def read_raw_data_table(num_of_rows=10000, city_id = None):
-    engine = get_db_engine(db_name='nadlan_db')
+    engine = get_db_engine(db_name='nextroof_db')
     try:
         if city_id:
             query = "SELECT * FROM nadlan_raw WHERE city_id = %s ORDER BY created_at DESC LIMIT %s"
@@ -43,9 +59,11 @@ def read_raw_data_table(num_of_rows=10000, city_id = None):
         else:
             query = "SELECT * FROM nadlan_raw ORDER BY created_at DESC LIMIT %s"
             df = pd.read_sql_query(query, engine, params=(num_of_rows,))
-        # df_clean = read_key_from_nadlan_clean(get_db_engine(db_name='nextroof_db'))
-        # keys_to_remove = df_clean['key'].unique()
-        # df = df[~df['keyvalue'].isin(keys_to_remove)]
+
+        # Remove data that alreay exist
+        df_clean = read_key_from_nadlan_clean(get_db_engine(db_name='nextroof_db'))
+        keys_to_remove = df_clean['key'].unique()
+        df = df[~df['key'].isin(keys_to_remove)]
         return df
 
     except Exception as e:

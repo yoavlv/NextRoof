@@ -25,10 +25,11 @@ def data_prep_madlan(df,city_id, start_year=2005, end_year=2025, min_price=80000
         "@start_year <= year < @end_year and @min_price < price < @max_price and 25 < size < 400 and build_year > 1910")
     df = df.copy()
     df.loc[:, 'age'] = current_year - df.loc[:, 'build_year']
-
-    cols = ["rooms", "floor", "size", "price", "build_year", "floors",
-                             "year", "age", "gush_rank", "street_rank", "helka_rank", "new"
-            ]
+    df = filter_type_madlan(df)
+    cols = ["rooms", "floor", "size", "price", "build_year", "floors","year", "age", "gush_rank", "street_rank",
+            "helka_rank", "new", 'type_apartment',
+           'type_apartment_in_building', 'type_rooftop_apartment',
+           'type_penthouse', 'type_garden_apartment']
     df = df.dropna(subset=cols)
 
     df.loc[:, 'floors'] = df['floors'].astype(float).astype(np.int32)
@@ -42,7 +43,26 @@ def data_prep_madlan(df,city_id, start_year=2005, end_year=2025, min_price=80000
     data = predict_data_madlan(df, model, item_id,city_id)
     return data
 
+def filter_type_madlan(df):
+    df = df.dropna(subset = ['asset_type'])
 
+    type_list = ['building','flat','roofflat','penthouseapp','gardenapartment']
+    missing_cols = [col for col in type_list if col not in df.columns]
+    for col in missing_cols:
+        df[col] = 0
+    pattern = '|'.join(type_list)
+    df_filtered = df[df['asset_type'].str.contains(pattern)]
+    df_encoded = pd.get_dummies(df_filtered, columns=['asset_type'])
+    df_encoded = df_encoded.replace({True: 1, False: 0})
+    col_name_mapping = {
+        'building': 'type_apartment',
+        'flat': 'type_apartment_in_building',
+        'roofflat': 'type_rooftop_apartment',
+        'penthouseapp': 'type_penthouse',
+        'gardenapartment': 'type_garden_apartment',
+    }
+    df_encoded = df_encoded.rename(columns=col_name_mapping)
+    return df_encoded
 def predict_data_madlan(df, model, item_id, city_id):
     """
     Make predictions using the input model and compute r2_score and MAE.
@@ -86,7 +106,7 @@ def predict_data_madlan(df, model, item_id, city_id):
     return data
 
 
-def main_madlan_calc(city, city_id):
+def main_madlan_calc(city, city_id, local_host=False):
     status = {}
     try:
         df = read_from_madlan_rank(city_id)
@@ -111,11 +131,14 @@ def main_madlan_calc(city, city_id):
         data['updated_rows'] = 'Empty DataFrame'
         if not data_calc['df'].empty:
             df = data_calc['df']
-            # data = add_new_deals_madlan_predict(data_calc['df'])
-            # data2 = add_new_deals_madlan_predict(data_calc['df'], '13.50.98.191')
-            db_manager = DatabaseManager('nextroof_db', 'localhost', 'madlan_predict')
-            df = df[['item_id','price','predicted','difference']]
-            success, new_rows, updated_rows = db_manager.insert_dataframe(df,'item_id')
+            df = df[['item_id', 'price', 'predicted', 'difference']]
+
+            if local_host:
+                db_manager = DatabaseManager(table_name='madlan_predict', db_name='nextroof_db', host_name='localhost')
+                success, new_rows, updated_rows = db_manager.insert_dataframe(df,'item_id')
+
+            db_manager = DatabaseManager(table_name='madlan_predict', db_name='nextroof_db')
+            success, new_rows, updated_rows = db_manager.insert_dataframe_batch(df, batch_size=int(df.shape[0]), replace=True, pk_columns='item_id')
 
             status.update({
                 'success': success,

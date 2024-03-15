@@ -1,6 +1,7 @@
 from dev import get_db_connection
 from tqdm import tqdm
 import psycopg2
+import numpy as np
 
 def add_new_deals_nadlan_raw(df):
     conn = get_db_connection(db_name='nadlan_db')
@@ -55,7 +56,6 @@ def add_new_deals_nadlan_raw(df):
             conn.close()
     return data
 
-import numpy as np
 def add_new_deals_nadlan_clean(df, host_name='localhost'):
     conflict_count = 0
     new_row_count = 0

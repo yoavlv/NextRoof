@@ -70,16 +70,22 @@ def fill_nan_by_avg(df, column, city_id):
     return df_merged
 
 
-def main_madlan_ranking(city_id,city):
+def main_madlan_ranking(city_id,city, local_host=False):
     status = {}
     try:
         df = rank(city_id)
         df = update_floors_and_build_year(df,city_id)
         df = fill_nan_by_avg(df, 'build_year',city_id)
         df = fill_nan_by_avg(df, 'floors',city_id)
-        db_manager = DatabaseManager('nextroof_db', 'localhost', 'madlan_rank')
-        success, new_rows, updated_rows = db_manager.insert_dataframe(df, 'item_id')
-        # data2 = add_new_deals_madlan_rank(df,'13.50.98.191')
+
+        if local_host:
+            db_manager = DatabaseManager(table_name='madlan_rank', db_name='nextroof_db', host_name='localhost')
+            success, new_rows, updated_rows = db_manager.insert_dataframe(df, 'item_id')
+
+        db_manager = DatabaseManager(table_name='madlan_rank', db_name='nextroof_db')
+        success, new_rows, updated_rows = db_manager.insert_dataframe_batch(df, batch_size=int(df.shape[0]),
+                                                                             replace=True, pk_columns='item_id')
+
         status['success'] = success
         status['new_rows'] = new_rows
         status['updated_rows'] = updated_rows
