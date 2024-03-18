@@ -11,12 +11,14 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: 10
-    PYTHONPATH: "/opt/airflow:${PYTHONPATH}"
+    AIRFLOW__WEBSERVER__SECRET_KEY: 'U/Uxnx78IhwK9ByJYQAefg=='
+    PYTHONPATH: "/opt/airflow/nextroof:${PYTHONPATH}"
+
   volumes:
-    - .:/opt/airflow:delegated
-    - ./dags:/opt/airflow/dags
-    - ./logs:/opt/airflow/logs
-    - ./plugins:/opt/airflow/plugins
+    - ./:/opt/airflow/nextroof
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-0}:${AIRFLOW_GID:-0}"
   depends_on:
     postgres:
@@ -43,7 +45,7 @@ services:
     <<: *airflow-common
     command: webserver
     ports:
-      - 8010:8080
+      - 8011:8080
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8010/health"]
       interval: 10s

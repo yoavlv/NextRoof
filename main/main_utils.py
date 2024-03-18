@@ -1,9 +1,26 @@
+import ssl
 from dev import password
 from email.message import EmailMessage
 import smtplib
 import json
-import ssl
 
+
+params = {
+    'nadlan_params':{
+        'num_of_pages': 0,
+        'maintenance': False,
+        'rank': True,
+    },
+    'madlan_params': {
+        'clean':False,
+    },
+    'model_params':{
+        'train': False,
+        'find_best_params': False,
+        'best_params': False,
+        'lean_params': True
+    },
+}
 def send_daily_status(data):
     formatted_data = json.dumps(data, indent=4, ensure_ascii=False)
     email_sender = 'yoavlv12@gmail.com'

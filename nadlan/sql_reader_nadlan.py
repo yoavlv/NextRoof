@@ -4,7 +4,11 @@ from sqlalchemy import text, exc
 from dev import get_db_engine
 from sqlalchemy.exc import SQLAlchemyError
 
-
+def read_from_view(view_name):
+    engine = get_db_engine(db_name='nextroof_db')
+    query = f"select * from {view_name};"
+    df = pd.read_sql_query(query, engine)
+    return df
 def read_floors_to_dict():
     engine = get_db_engine(db_name='nextroof_db')
     floors_dict = {}

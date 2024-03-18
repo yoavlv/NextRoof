@@ -1,133 +1,78 @@
-from utils.utils_sql import DatabaseManager
-from .sql_reader_nadlan import read_from_nadlan_clean
-import numpy as np
-import datetime
+from utils.utils_sql import DatabaseManager, sql_script
+from nadlan.sql_reader_nadlan import read_from_view
 from dateutil.relativedelta import relativedelta
 import traceback
+import pandas as pd
+import datetime
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+
 CURRENT_DATE = datetime.datetime.now()
+CURRENT_YEAR = datetime.datetime.now().year
 THREE_MONTHS_EARLIER = CURRENT_DATE - relativedelta(months=2)
 
 
-def create_rank_for_area(df, column):
-    '''
-    This function need to get -all- the city data to create new ranking for the city
-    '''
-    rank_dict = {}
-    years = df['year'].unique()
-    column = str(column)
-    for year in years:
-        df_by_year = df[df.loc[:, 'year'] == year]
+def calc_and_predict_polynomial_change(df, col_name, current_year, degree=2):
+    X = df['year'].values.reshape(-1, 1)
+    y = df[col_name].values
+    poly_features = PolynomialFeatures(degree=degree, include_bias=True)
+    X_poly = poly_features.fit_transform(X)
+    model = LinearRegression()
+    model.fit(X_poly, y)
 
-        rank_group_price = df_by_year.groupby(column)['price'].sum().reset_index()
-        rank_group_size = df_by_year.groupby(column)['size'].sum().reset_index()
-
-        rank_group_size.loc[:, 'size'] = rank_group_size.loc[:, 'size'].astype(np.int64)
-        rank_group_price.loc[:, 'price'] = rank_group_price.loc[:, 'price'].astype(np.int64)
-
-        rank_group = rank_group_price.merge(rank_group_size, on=column)
-        rank_group.loc[:, 'rank'] = rank_group.loc[:, 'price'] / rank_group.loc[:, 'size']
-
-        rank_group.loc[:, 'rank'] = rank_group.loc[:, 'rank'].astype(np.int32)
-        rank_group = rank_group.sort_values(by='rank', ascending=False)
-
-        rank_dict[year] = rank_group
-
-    new_column_name = column + '_rank'
-
-    if column == 'street_id':
-        new_column_name = 'street_rank'
-
-    df[new_column_name] = np.nan
-
-    for index, row in df.iterrows():
-        year = row['year']
-        street_id = row[column]
-        temp_df = rank_dict[year]
-
-        match = temp_df[temp_df[column] == street_id]['rank']
-        if not match.empty:
-            df.loc[index, new_column_name] = match.iloc[0]
-        else:
-            df.loc[index, new_column_name] = np.nan
-    df = df.dropna(subset=[new_column_name])
-    df.loc[:, new_column_name] = df.loc[:, new_column_name].astype(np.int32)
-    return df
+    new_year_poly = poly_features.transform([[current_year]])
+    predicted_rank = model.predict(new_year_poly)
+    return int(predicted_rank[0])
 
 
-def change_by_years(df):
-    years = df['year'].unique()
-    today = df[df['year'] == THREE_MONTHS_EARLIER.year]
-    avg_today = today['price'].sum() / today['size'].sum()
-    change = {}
-    for year in years:
-        df_year = df[df['year'] == year]
-        avg_year = df_year['price'].sum() / df_year['size'].sum()
-        change[year] = avg_today / avg_year
+def create_rank_df(df, group_cols, rank_col):
+    current_year = datetime.datetime.now().year
+    rank_data = {'year': current_year, }
+    for col in group_cols:
+        rank_data[col] = []
+    rank_data[rank_col] = []
 
-    return change
+    for key, temp_df in df.groupby(group_cols):
+        if temp_df.shape[0] > 3:
+            rank_res = calc_and_predict_polynomial_change(temp_df, rank_col, current_year)
+            if rank_res >= 3000:
+                if isinstance(key, tuple):
+                    for idx, col_name in enumerate(group_cols):
+                        rank_data[col_name].append(key[idx])
+                else:
+                    rank_data[group_cols[0]].append(key)
+
+                rank_data[rank_col].append(rank_res)
+
+    rank_df = pd.DataFrame(rank_data)
+    return rank_df
 
 
-def create_parcel_rank(df):
-    '''
-    This function need to get -all- the city data to create new ranking for the city
-    '''
-    df = df.copy()
-    df = df[(df['year'] <= THREE_MONTHS_EARLIER.year)]
-
-    parcel_rank = {}
-
-    df.loc[:,'gush_helka'] = df.apply(lambda row: str(row['gush']) + str(row['helka']), axis=1)
-
-    df.loc[:, 'helka_rank'] = None
-    gush_helka = df['gush_helka'].unique()
-
-    change_p = change_by_years(df)
-
-    for gh in gush_helka:
-        df_gush_helka = df[df['gush_helka'] == gh]
-        max_year = df_gush_helka.loc[:, 'build_year'].max()
-        result_df = df_gush_helka[(df_gush_helka['year'] >= max_year) & (df_gush_helka['year'] < 2024)].copy()
-
-        result_df['p_price'] = result_df['year'].apply(lambda x: change_p[x]) * result_df['price']
-        result_df.replace([np.inf, -np.inf], np.nan, inplace=True)
-        result_df.dropna(subset=['p_price'], inplace=True)
-
-        result_df['p_price'] = result_df['p_price'].astype(np.int32)
-
-        denominator = result_df['size'].sum()
-        if denominator != 0:
-            rank = result_df['p_price'].sum() / denominator
-        else:
-            rank = np.nan
-        parcel_rank[gh] = rank
-
-    df.loc[:, 'helka_rank'] = df.loc[:, 'gush_helka'].map(parcel_rank)
-    df = df.dropna(subset=['helka_rank'])
-    df.loc[:, 'helka_rank'] = df.loc[:, 'helka_rank'].astype(np.int64)
-    df.drop(columns=['gush_helka'], inplace=True)
-
-    return df
-
-def main_nadlan_rank(city, city_id, local_host=False):
-    nadlan_rank_status = {}
+def main_nadlan_rank():
+    success = sql_script('nadlan.sql')
+    nadlan_rank_status = {"success": True, "new_rows": 0, "updated_rows": 0, "errors": [], 'nadlan_sql_script': success}
     try:
-        df = read_from_nadlan_clean(city_id)
-        df = create_rank_for_area(df, 'gush')
-        df = create_rank_for_area(df, 'street_id')
-        df = create_parcel_rank(df)
-        if local_host:
-            db_manager = DatabaseManager(table_name='nadlan_rank', db_name='nextroof_db', host_name='localhost')
-            success, new_rows, updated_rows = db_manager.insert_dataframe(df, 'key')
+        df = read_from_view('street_rank_view')
+        street_rank_df = create_rank_df(df, ['city_id', 'street_id'], 'street_rank')
+        db_manager = DatabaseManager(table_name='street_rank', db_name='nextroof_db')
+        _, _, _ = db_manager.insert_dataframe_batch(street_rank_df, batch_size=int(street_rank_df.shape[0]),
+                                                                             replace=True, pk_columns=['city_id','street_id'])
 
-        db_manager = DatabaseManager(table_name='nadlan_rank', db_name='nextroof_db')
-        success, new_rows, conflict_rows = db_manager.insert_dataframe_batch(df, batch_size=int(df.shape[0]),
-                                                                             replace=True, pk_columns='key')
-        nadlan_rank_status['success'] = success
-        nadlan_rank_status['new_rows'] = new_rows
-        nadlan_rank_status['updated_rows'] = conflict_rows
+        df = read_from_view('gush_rank_view')
+        gush_rank_df = create_rank_df(df, ['gush'], 'gush_rank')
+        db_manager = DatabaseManager(table_name='gush_rank', db_name='nextroof_db')
+        _, _, _ = db_manager.insert_dataframe_batch(gush_rank_df, batch_size=int(gush_rank_df.shape[0]),
+                                                                             replace=True, pk_columns='gush')
+
+        df = read_from_view('helka_rank_view')
+        gush_helka_rank_df = create_rank_df(df, ['gush', 'helka'], 'helka_rank')
+        db_manager = DatabaseManager(table_name='helka_rank', db_name='nextroof_db')
+        _, _, _ = db_manager.insert_dataframe_batch(gush_helka_rank_df, batch_size=int(gush_helka_rank_df.shape[0]),
+                                                                             replace=True, pk_columns=['gush','helka'])
+        nadlan_rank_status['success'] = True
 
     except Exception as e:
-        error_message = f"{city}:{e}\n{traceback.format_exc()}"
+        error_message = f":{e}\n{traceback.format_exc()}"
         nadlan_rank_status['success'] = False
         nadlan_rank_status['error'] = error_message
 

@@ -4,6 +4,11 @@ from dev import get_db_engine
 import pickle
 from sqlalchemy import text
 
+def read_from_rank_table(table_name):
+    engine = get_db_engine(db_name='nextroof_db')
+    query = f"select * from {table_name};"
+    df = pd.read_sql_query(query, engine)
+    return df
 def read_addr_table(city_id):
     engine = get_db_engine(db_name='nextroof_db')
     query = "SELECT * FROM addr_cache WHERE LENGTH(neighborhood) > 3 and city_id = %s"
@@ -41,14 +46,15 @@ def read_from_madlan_raw(city_id=None, item_id=False):
 
 def read_from_madlan_rank(city_id):
     engine = get_db_engine(db_name='nextroof_db')
-    query = "SELECT * FROM madlan_rank WHERE city_id = %s"
+    query = "SELECT * FROM madlan_clean WHERE city_id = %s"
     params = (int(city_id),)
     with engine.connect() as conn:
         df = pd.read_sql_query(query, conn,params=params)
+
         conn.close()
 
     df.replace({'NaN': np.nan, 'None': np.nan}, inplace=True)
-    df = df.dropna(subset=['helka_rank', 'street_rank','gush_rank'])
+    df = df.dropna(subset=['helka_rank', 'street_rank','gush_rank','floor','floors','build_year'])
     df.loc[:, 'helka_rank'] = df['helka_rank'].astype(float).astype(np.int32)
     df.loc[:, 'street_rank'] = df['street_rank'].astype(float).astype(np.int32)
 

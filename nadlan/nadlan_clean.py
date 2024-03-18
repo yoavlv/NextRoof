@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
-from .nadlan_utils import nominatim_api, complete_neighborhood
-from .sql_reader_nadlan import read_raw_data_table, read_from_nadlan_clean, distinct_city_list\
-    , read_from_nadlan_rank_find_floor, fetch_all_cache_data_by_city, read_floors_to_dict
+from nadlan.nadlan_utils import nominatim_api
+from nadlan.sql_reader_nadlan import read_raw_data_table, read_from_nadlan_rank_find_floor, fetch_all_cache_data_by_city, read_floors_to_dict
 from utils.base import add_id_columns , complete_lat_long
-from .sql_save_nadlan import add_new_deals_nadlan_clean_neighborhood_complete
 import traceback
 from utils.utils_sql import DatabaseManager
 from utils.base import find_most_similar_word
 import re
+
 def clean_floor_name(floor_name: str) -> str:
     """
     Cleans the floor_name string by removing non-digit characters
@@ -81,18 +80,6 @@ def find_missing_floors(df: pd.DataFrame)-> pd.DataFrame:
     return df
 
 
-def clean_outliers(df: pd.DataFrame) -> pd.DataFrame:
-    df['PPM'] = (df["price"] / df['size']).astype(np.int32)
-    columns = ['PPM']
-    for col in columns:
-        q1, q3 = np.percentile(df[col], [25, 75])
-        iqr = q3 - q1
-        lower_bound = q1 - (1.5 * iqr)
-        upper_bound = q3 + (1.5 * iqr)
-        df = df[(df[col] > lower_bound) & (df[col] < upper_bound)]
-    df = df.drop(columns=['PPM'])
-    return df
-
 
 def columns_strip_df(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
@@ -100,17 +87,7 @@ def columns_strip_df(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = df[col].str.strip()
     return df
 
-def maintenance_neighborhood(table: str)-> pd.DataFrame:
-    big_df = pd.DataFrame()
-    city_list = distinct_city_list(table)
-    for city in city_list:
-        df = read_from_nadlan_clean(city)
-        df = complete_neighborhood(df)
 
-        big_df = pd.concat([big_df, df], ignore_index=True)
-
-    add_new_deals_nadlan_clean_neighborhood_complete(big_df)
-    return big_df
 
 def run_nadlan_clean(city_id: int, city: str, local_host=False)-> dict:
     maintance = False
@@ -126,7 +103,6 @@ def run_nadlan_clean(city_id: int, city: str, local_host=False)-> dict:
             df = enrich_df_with_location_data(df, city_id)
             if maintance:
                 df = find_missing_floors(df)
-                maintenance_neighborhood('nadlan_clean')
             else:
                 df['floors'] = df['floors'].replace(['NaN', np.nan, ''], None)
                 df = df.dropna(subset=['floors'])

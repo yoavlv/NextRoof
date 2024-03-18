@@ -21,11 +21,6 @@ def nadlan_main(city_dict: Dict[int, str], params: Dict[str, Any]) -> Dict[str, 
         result = run_nadlan_clean(city_id=city_id, city=city)
         update_status('status_clean', city, result)
 
-    # Rank data
-    def rank_data(city_id: int, city: str) -> None:
-        result = main_nadlan_rank(city_id=city_id, city=city)
-        update_status('status_rank', city, result)
-
     # Run clean or rank tasks in threads
     def run_task_in_threads(task: Any, task_name: str):
         print(f"Starting {task_name}...")
@@ -39,7 +34,8 @@ def nadlan_main(city_dict: Dict[int, str], params: Dict[str, Any]) -> Dict[str, 
     run_task_in_threads(clean_data, "cleaning")
 
     if params['rank']:
-        run_task_in_threads(rank_data, "ranking")
+        rank_status = main_nadlan_rank()
+        nadlan_status['status_rank'] = rank_status
 
     print("(nadlan_main) FINISH")
     return nadlan_status

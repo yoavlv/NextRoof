@@ -2,30 +2,35 @@
 
 ![nextroof_workflow!](img/nextroof_workflow.png)
 
-NextRoof is an innovative web platform that revolutionizes real estate valuation in Israel by utilizing Machine Learning. 
-Central to NextRoof is a dynamic recommendation engine, driven by sophisticated machine learning algorithms that seamlessly adjust to market trends. 
-Our system meticulously gathers the **latest market data daily**, processes it, and stores it in a cloud-based database. Users can effortlessly calculate up-to-date asset values using our calculator, reflecting the current market conditions, and explore the latest transactions directly on our website.
-This repository is home to the essential algorithm that powers NextRoof's core functionalities.
+NextRoof revolutionizes real estate valuation in Israel with its cutting-edge web platform, 
+leveraging Machine Learning for precise estimates. Beyond mere valuation, NextRoof offers in-depth 
+analysis of market trends by aggregating and processing data from diverse sources. At its heart lies a dynamic 
+recommendation engine, fueled by advanced machine learning algorithms, ensuring adaptability to real-time market 
+shifts. Our platform diligently updates with the latest market data daily, processed and stored in a secure 
+cloud-based database. Users benefit from an intuitive calculator that mirrors the latest market dynamics for 
+accurate property valuations and can explore up-to-the-minute deals directly on our site. This repository 
+houses the pivotal algorithm that is the backbone of NextRoof, enabling its core capabilities.
 
+**ETL and Data Optimization:**
 
-**1. Data Collection** - Employed sophisticated methods for data extraction while evading blocks. This ensured rapid and clean data accumulation from multiple sources.
+**1. Data Extraction** - Collecting data from several sources and cross-checking data in order to obtain reliable and high-quality data.
 
 **2. Data Cleaning** - The data underwent rigorous cleaning. We used techniques like regex and external websites for data completeness and removed any irrelevant data.
 
 **3. Data Visualization** - This phase helped in data analysis, ensuring its reliability and quality.
 
-**4. Data Engineering** - Our secret sauce! Through extensive research, we optimized the dataset to significantly enhance our prediction models, surpassing other market leaders in real estate prediction.
+**4. Feature Engineering** - We've refined our dataset to significantly improve our prediction models, positioning us ahead of the curve in real estate market forecasting.
 
 **4. Machine learning** - After thorough research, we chose a stacking method combining algorithms like *RandomForestRegressor*, *CatBoostRegressor*, *XGBRegressor*, and *GradientBoostingRegressor*. A *LinearRegression* model serves as our meta-model.
 
-**5. Market Deployment** - After training and testing the model is ready for the next stage to preidct the deals that avileble on the market
+**5. Market Deployment** - Our models, having been rigorously trained and tested, are primed for deployment, ready to forecast the most promising real estate opportunities available in the market.
 
 
 
 
 ## Tech Stack:
 *Primary Development Language*: Python
-*Libreris*: Pandas, Numpy, Matplotlib,Sklearn, Sqlalchemy and Xgboost
+*Libreris*: Pandas, Numpy, Matplotlib,Sklearn, Sqlalchemy and Xgboost, PyPlot, Regex, difflib, pytest
 
 
  **models MAE and R2 scores**
@@ -37,9 +42,7 @@ This repository is home to the essential algorithm that powers NextRoof's core f
 
 **Requirements**
 To run this project, you will need:
-Python 3.11 or higher
-Jupyter Notebook
-Pandas, Numpy, Matplotlib, Sklearn, Xgboost, Sqlalchemy and Seaborn libraries
+Python 3.8 or higher
 
 ## link for the website
 1. Visit [NextRoof]([www.nextroof.co.il](https://www.nextroof.co.il/))  https://www.nextroof.co.il/

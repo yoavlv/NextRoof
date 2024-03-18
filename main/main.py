@@ -1,4 +1,3 @@
-import sys
 import ssl
 from dev import password
 from email.message import EmailMessage
@@ -13,6 +12,22 @@ from algorithms.model import train_model_main
 from datetime import datetime
 
 
+params = {
+    'nadlan_params':{
+        'num_of_pages': 0,
+        'maintenance': False,
+        'rank': True,
+    },
+    'madlan_params': {
+        'clean':False,
+    },
+    'model_params':{
+        'train': False,
+        'find_best_params': False,
+        'best_params': False,
+        'lean_params': True
+    },
+}
 def send_daily_status(data):
     formatted_data = json.dumps(data, indent=4, ensure_ascii=False)
     email_sender = 'yoavlv12@gmail.com'
@@ -28,8 +43,6 @@ def send_daily_status(data):
     with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
         smtp.login(email_sender, email_pass)
         smtp.sendmail(email_sender, email_receiver, em.as_string())
-
-
 def run_new(params):
     city_code_list = [6400, 4000,70,5000,6600,7400,9000, 8300,6300,6100, 8700, 3000, 6900, 8600, 2650, 6200, 7900]
     city_dict = read_from_population(city_id_list=city_code_list)
@@ -61,25 +74,6 @@ def run_new(params):
 
     return run_status
 
-
-params = {
-    'nadlan_params':{
-        'num_of_pages': 0,
-        'maintenance': False,
-        'rank': True,
-    },
-    'madlan_params': {
-        'clean':True,
-
-    },
-    'model_params':{
-        'train': False,
-        'find_best_params': False,
-        'best_params': False,
-        'lean_params': True
-    },
-
-}
 
 status = run_new(params)
 print(status)

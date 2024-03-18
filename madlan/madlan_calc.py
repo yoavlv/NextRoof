@@ -3,7 +3,6 @@ import numpy as np
 from datetime import datetime
 from sklearn.metrics import r2_score, mean_absolute_error
 from .sql_reader_madlan import read_from_madlan_rank, read_model_scaler_from_db
-from .sql_save_madlan import add_new_deals_madlan_predict
 import traceback
 from utils.utils_sql import DatabaseManager
 

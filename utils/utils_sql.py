@@ -4,6 +4,29 @@ import psycopg2
 from psycopg2 import sql, extras
 import numpy as np
 import pandas as pd
+from psycopg2.extensions import register_adapter, AsIs
+import os
+def sql_script(sql_file_name: str)-> bool:
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        script_dir = os.path.dirname(__file__)
+        full_path = os.path.join(script_dir, sql_file_name)
+        with open(full_path, 'r') as sql_file:
+            sql_script = sql_file.read()
+
+        cur.execute(sql_script)
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f"SQL file executed successfully. {sql_file_name}")
+        return True
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Error {sql_file_name}: {error}")
+        return False
+    finally:
+        conn.close()
+
 
 class DatabaseManager:
     def __init__(self, table_name: str, db_name: str = 'nextroof_db', host_name: str = 'nextroof-rds.cboisuqgg7m3.eu-north-1.rds.amazonaws.com') -> None:
@@ -17,7 +40,7 @@ class DatabaseManager:
         return get_db_connection(self.db_name, self.host_name)
 
     def preprocess_values(self, row: Tuple[Any, ...]) -> Tuple[Any, ...]:
-        return tuple((None if (value == '' or value == 'NaN' or pd.isna(value)) else value) for value in row)
+        return tuple((None if (value == '' or value == '<NA>' or value == 'NaN' or pd.isna(value)) else value) for value in row)
 
     def close_connection(self) -> None:
         if self.conn is not None:
@@ -107,10 +130,12 @@ class DatabaseManager:
     def insert_dataframe_batch(self, df: pd.DataFrame, pk_columns: Union[List[str], None, str] = None,
                                columns: Union[List[str], None] = None, batch_size: int = 1000, replace: bool = False) -> \
     Tuple[bool, int, int]:
-
+        psycopg2.extensions.register_adapter(np.int32, psycopg2._psycopg.AsIs)
+        psycopg2.extensions.register_adapter(np.int64, psycopg2._psycopg.AsIs)
         if batch_size <= 0:
             raise ValueError(f"batch_size must be a positive integer {self.table_name}")
 
+        df = self.replace_nan_value_df(df)
         if pk_columns is not None:
             pk_columns = pk_columns.split() if isinstance(pk_columns, str) else pk_columns
         if columns is None:
@@ -179,10 +204,12 @@ class DatabaseManager:
         rows_inserted = total_row - rows_conflicted
 
         pk_columns = pk_columns.split() if isinstance(pk_columns, str) else pk_columns
-        df = df.replace(['None', 'NaN', np.nan, '','NaT'], None)
+        df = self.replace_nan_value_df(df)
 
         for index, row in df.iterrows():
             self.insert_record_from_df(row, df.columns.tolist(), pk_columns, replace)
 
         return True, rows_inserted, rows_conflicted
 
+    def replace_nan_value_df(self,df: pd.DataFrame)-> pd.DataFrame:
+        return df.replace(['None', 'NaN', np.nan, '','NaT','<NA>'], None)
